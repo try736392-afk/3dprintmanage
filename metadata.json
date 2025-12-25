@@ -1,5 +1,5 @@
 {
   "name": "智能耗材管理",
-  "description": "一个智能的 3D 打印耗材库存管理器，具有持久化存储、用量跟踪和 AI 材质建议功能。",
+  "description": "一个智能的 3D 打印耗材库存管理器，具有持久化存储和用量跟踪功能。",
   "requestFramePermissions": []
 }

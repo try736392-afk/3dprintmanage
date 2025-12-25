@@ -4,8 +4,7 @@ import { loadFilaments, saveFilaments } from './services/storageService';
 import ProgressBar from './components/ProgressBar';
 import DeductModal from './components/DeductModal';
 import EditFilamentModal from './components/EditFilamentModal';
-import MaterialAdvisor from './components/MaterialAdvisor';
-import { Plus, Edit2, Trash2, Box, Info, Settings, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Box, Settings, Search } from 'lucide-react';
 
 function App() {
   const [filaments, setFilaments] = useState<Filament[]>([]);
@@ -16,10 +15,6 @@ function App() {
   const [editingFilament, setEditingFilament] = useState<Filament | undefined>(undefined);
   const [isDeductModalOpen, setDeductModalOpen] = useState(false);
   const [selectedFilamentId, setSelectedFilamentId] = useState<string | null>(null);
-  
-  // AI Advisor State
-  const [isAdvisorOpen, setAdvisorOpen] = useState(false);
-  const [advisorMaterial, setAdvisorMaterial] = useState<MaterialType>(MaterialType.PLA);
 
   // Load Data
   useEffect(() => {
@@ -114,11 +109,6 @@ function App() {
     }));
   };
 
-  const openAdvisor = (material: MaterialType) => {
-    setAdvisorMaterial(material);
-    setAdvisorOpen(true);
-  };
-
   // Derived State
   const filteredFilaments = filaments.filter(f => 
     f.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -197,9 +187,6 @@ function App() {
                 </div>
                 
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openAdvisor(filament.material)} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-lg" title="AI 顾问">
-                    <Info className="w-4 h-4" />
-                  </button>
                   <button onClick={() => handleEditClick(filament)} className="p-2 text-gray-400 hover:bg-gray-50 rounded-lg">
                     <Edit2 className="w-4 h-4" />
                   </button>
@@ -259,12 +246,6 @@ function App() {
           filament={filaments.find(f => f.id === selectedFilamentId)!}
         />
       )}
-
-      <MaterialAdvisor 
-        isOpen={isAdvisorOpen}
-        onClose={() => setAdvisorOpen(false)}
-        defaultMaterial={advisorMaterial}
-      />
     </div>
   );
 }
