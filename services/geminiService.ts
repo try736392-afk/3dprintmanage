@@ -1,23 +1,32 @@
 import { GoogleGenAI } from "@google/genai";
 import { MaterialType } from "../types";
+import { loadApiKey } from "./storageService";
 
-// Initialize the client conditionally to prevent crashing if API_KEY is missing.
-let ai: GoogleGenAI | null = null;
-const apiKey = process.env.API_KEY;
+const getClient = (): GoogleGenAI | null => {
+  // 1. Try to get key from LocalStorage (User Settings)
+  let key = loadApiKey();
 
-if (apiKey) {
-  try {
-    ai = new GoogleGenAI({ apiKey: apiKey });
-  } catch (e) {
-    console.error("Failed to initialize Gemini API client:", e);
+  // 2. Fallback to Environment Variable (System Config)
+  // Check if process is defined to avoid crashing in some browser environments
+  if (!key && typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    key = process.env.API_KEY;
   }
-} else {
-  console.warn("API_KEY is missing. AI features will be disabled.");
-}
+
+  if (!key) return null;
+
+  try {
+    return new GoogleGenAI({ apiKey: key });
+  } catch (e) {
+    console.error("Failed to initialize Gemini Client", e);
+    return null;
+  }
+};
 
 export const getMaterialAdvice = async (material: MaterialType, query: string): Promise<string> => {
+  const ai = getClient();
+
   if (!ai) {
-    return "系统未配置 API Key，AI 顾问功能暂时无法使用。";
+    return "请点击右上角设置图标，配置您的 Gemini API Key 以使用 AI 顾问功能。";
   }
 
   try {
@@ -39,6 +48,6 @@ export const getMaterialAdvice = async (material: MaterialType, query: string): 
     return response.text || "暂时无法提供建议。";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "抱歉，无法连接到 AI 顾问。请检查您的网络配置。";
+    return "AI 服务连接失败。请检查您的 API Key 是否有效，或网络是否通畅。";
   }
 };

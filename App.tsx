@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Filament, MaterialType } from './types';
-import { loadFilaments, saveFilaments } from './services/storageService';
+import { loadFilaments, saveFilaments, loadApiKey } from './services/storageService';
 import ProgressBar from './components/ProgressBar';
 import DeductModal from './components/DeductModal';
 import EditFilamentModal from './components/EditFilamentModal';
-import { Plus, Edit2, Trash2, Box, Settings, Search } from 'lucide-react';
+import SettingsModal from './components/SettingsModal';
+import MaterialAdvisor from './components/MaterialAdvisor';
+import { Plus, Edit2, Trash2, Box, Settings, Search, Sparkles } from 'lucide-react';
 
 function App() {
   const [filaments, setFilaments] = useState<Filament[]>([]);
@@ -15,6 +17,11 @@ function App() {
   const [editingFilament, setEditingFilament] = useState<Filament | undefined>(undefined);
   const [isDeductModalOpen, setDeductModalOpen] = useState(false);
   const [selectedFilamentId, setSelectedFilamentId] = useState<string | null>(null);
+  
+  // Settings & AI States
+  const [isSettingsOpen, setSettingsOpen] = useState(false);
+  const [isAdvisorOpen, setAdvisorOpen] = useState(false);
+  const [advisorMaterial, setAdvisorMaterial] = useState<MaterialType>(MaterialType.PLA);
 
   // Load Data
   useEffect(() => {
@@ -36,6 +43,17 @@ function App() {
         createdAt: f.createdAt || (Date.now() - index * 1000)
       }));
       setFilaments(migratedData);
+    }
+
+    // Check for API Key on load
+    const hasLocalKey = loadApiKey();
+    // Safety check for process.env to avoid crashes
+    const hasEnvKey = typeof process !== 'undefined' && process.env && process.env.API_KEY;
+
+    if (!hasLocalKey && !hasEnvKey) {
+      // If no key found anywhere, prompt user to set it
+      // Using a small timeout to ensure the UI is rendered first
+      setTimeout(() => setSettingsOpen(true), 1000);
     }
   }, []);
 
@@ -109,6 +127,11 @@ function App() {
     }));
   };
 
+  const openAdvisor = (material: MaterialType) => {
+    setAdvisorMaterial(material);
+    setAdvisorOpen(true);
+  };
+
   // Derived State
   const filteredFilaments = filaments.filter(f => 
     f.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -128,9 +151,18 @@ function App() {
             <Box className="w-8 h-8 text-indigo-600" />
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">SmartPrint <span className="text-indigo-600">库存</span></h1>
           </div>
-          <button onClick={handleAddClick} className="hidden sm:flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
-            <Plus className="w-4 h-4" /> 添加耗材
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setSettingsOpen(true)}
+              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+              title="设置 API Key"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            <button onClick={handleAddClick} className="hidden sm:flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
+              <Plus className="w-4 h-4" /> 添加耗材
+            </button>
+          </div>
         </div>
       </header>
 
@@ -187,6 +219,9 @@ function App() {
                 </div>
                 
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => openAdvisor(filament.material)} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-lg" title="AI 顾问">
+                    <Sparkles className="w-4 h-4" />
+                  </button>
                   <button onClick={() => handleEditClick(filament)} className="p-2 text-gray-400 hover:bg-gray-50 rounded-lg">
                     <Edit2 className="w-4 h-4" />
                   </button>
@@ -246,6 +281,17 @@ function App() {
           filament={filaments.find(f => f.id === selectedFilamentId)!}
         />
       )}
+
+      <SettingsModal 
+        isOpen={isSettingsOpen}
+        onClose={() => setSettingsOpen(false)}
+      />
+
+      <MaterialAdvisor 
+        isOpen={isAdvisorOpen}
+        onClose={() => setAdvisorOpen(false)}
+        defaultMaterial={advisorMaterial}
+      />
     </div>
   );
 }
