@@ -124,8 +124,13 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 relative">
+      {/* DEBUG BANNER */}
+      <div className="w-full bg-red-100 border-b border-red-300 p-2 text-center text-red-600 font-bold font-mono z-50">
+        Debug: App is running
+      </div>
+
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-[25px] z-30">
+      <header className="bg-white shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Box className="w-8 h-8 text-indigo-600" />
