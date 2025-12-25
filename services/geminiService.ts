@@ -1,10 +1,25 @@
 import { GoogleGenAI } from "@google/genai";
 import { MaterialType } from "../types";
 
-// Initialize the client. ensure process.env.API_KEY is available.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize the client conditionally to prevent crashing if API_KEY is missing.
+let ai: GoogleGenAI | null = null;
+const apiKey = process.env.API_KEY;
+
+if (apiKey) {
+  try {
+    ai = new GoogleGenAI({ apiKey: apiKey });
+  } catch (e) {
+    console.error("Failed to initialize Gemini API client:", e);
+  }
+} else {
+  console.warn("API_KEY is missing. AI features will be disabled.");
+}
 
 export const getMaterialAdvice = async (material: MaterialType, query: string): Promise<string> => {
+  if (!ai) {
+    return "系统未配置 API Key，AI 顾问功能暂时无法使用。";
+  }
+
   try {
     const model = 'gemini-3-flash-preview';
     const systemInstruction = `你是一位专业的 3D 打印顾问。
@@ -24,6 +39,6 @@ export const getMaterialAdvice = async (material: MaterialType, query: string): 
     return response.text || "暂时无法提供建议。";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "抱歉，无法连接到 AI 顾问。请检查您的网络或 API 密钥。";
+    return "抱歉，无法连接到 AI 顾问。请检查您的网络配置。";
   }
 };
