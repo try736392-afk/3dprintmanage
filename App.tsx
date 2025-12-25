@@ -1,68 +1,63 @@
 import React, { useState, useEffect } from 'react';
 import { Filament, MaterialType } from './types';
-import { loadFilaments, saveFilaments, loadApiKey } from './services/storageService';
+import { loadFilaments, saveFilaments } from './services/storageService';
 import ProgressBar from './components/ProgressBar';
 import DeductModal from './components/DeductModal';
 import EditFilamentModal from './components/EditFilamentModal';
-import SettingsModal from './components/SettingsModal';
 import MaterialAdvisor from './components/MaterialAdvisor';
-import { Plus, Edit2, Trash2, Box, Settings, Search, Sparkles } from 'lucide-react';
+import { Plus, Edit2, Trash2, Box, Search, Sparkles } from 'lucide-react';
 
 function App() {
+  // Data State
   const [filaments, setFilaments] = useState<Filament[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Modal States
+  // UI States
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [editingFilament, setEditingFilament] = useState<Filament | undefined>(undefined);
   const [isDeductModalOpen, setDeductModalOpen] = useState(false);
   const [selectedFilamentId, setSelectedFilamentId] = useState<string | null>(null);
-  
-  // Settings & AI States
-  const [isSettingsOpen, setSettingsOpen] = useState(false);
   const [isAdvisorOpen, setAdvisorOpen] = useState(false);
   const [advisorMaterial, setAdvisorMaterial] = useState<MaterialType>(MaterialType.PLA);
 
-  // Load Data
+  // --- 2. Side Effects ---
+
+  // Load Inventory Data
   useEffect(() => {
-    const data = loadFilaments();
-    if (data.length === 0) {
-      // Demo Data for first run
-      const now = Date.now();
-      const demoData: Filament[] = [
-        { id: '1', name: '星空黑', brand: 'Prusament', material: MaterialType.PLA, colorHex: '#1a1a1a', totalWeight: 1000, currentWeight: 850, createdAt: now },
-        { id: '2', name: '信号红', brand: 'eSun', material: MaterialType.PETG, colorHex: '#ef4444', totalWeight: 1000, currentWeight: 150, createdAt: now - 1000 },
-        { id: '3', name: '极地白', brand: 'Polymaker', material: MaterialType.PLA, colorHex: '#f3f4f6', totalWeight: 1000, currentWeight: 920, createdAt: now - 2000 },
-      ];
-      setFilaments(demoData);
-      saveFilaments(demoData);
-    } else {
-      // Ensure compatibility with older data (add createdAt if missing)
-      const migratedData = data.map((f, index) => ({
-        ...f,
-        createdAt: f.createdAt || (Date.now() - index * 1000)
-      }));
-      setFilaments(migratedData);
-    }
-
-    // Check for API Key on load
-    const hasLocalKey = loadApiKey();
-    // Safety check for process.env to avoid crashes
-    const hasEnvKey = typeof process !== 'undefined' && process.env && process.env.API_KEY;
-
-    if (!hasLocalKey && !hasEnvKey) {
-      // If no key found anywhere, prompt user to set it
-      // Using a small timeout to ensure the UI is rendered first
-      setTimeout(() => setSettingsOpen(true), 1000);
+    try {
+      const data = loadFilaments();
+      if (data.length === 0) {
+        // Demo Data
+        const now = Date.now();
+        const demoData: Filament[] = [
+          { id: '1', name: '星空黑', brand: 'Prusament', material: MaterialType.PLA, colorHex: '#1a1a1a', totalWeight: 1000, currentWeight: 850, createdAt: now },
+          { id: '2', name: '信号红', brand: 'eSun', material: MaterialType.PETG, colorHex: '#ef4444', totalWeight: 1000, currentWeight: 150, createdAt: now - 1000 },
+          { id: '3', name: '极地白', brand: 'Polymaker', material: MaterialType.PLA, colorHex: '#f3f4f6', totalWeight: 1000, currentWeight: 920, createdAt: now - 2000 },
+        ];
+        setFilaments(demoData);
+        saveFilaments(demoData);
+      } else {
+        const migratedData = data.map((f, index) => ({
+          ...f,
+          createdAt: f.createdAt || (Date.now() - index * 1000)
+        }));
+        setFilaments(migratedData);
+      }
+    } catch (e) {
+      console.error("Error loading filaments:", e);
+      // Even if data load fails, we set empty array to ensure UI renders
+      setFilaments([]);
     }
   }, []);
 
-  // Save on Change
+  // Save Inventory Data
   useEffect(() => {
     if (filaments.length > 0) {
       saveFilaments(filaments);
     }
   }, [filaments]);
+
+  // --- 3. Event Handlers ---
 
   const handleAddClick = () => {
     setEditingFilament(undefined);
@@ -82,33 +77,17 @@ function App() {
 
   const handleSaveFilament = (filament: Filament) => {
     setFilaments(prev => {
-      // 1. Determine Base Name
-      let baseName = filament.name.trim();
-      if (!baseName) baseName = "耗材";
-
-      // 2. Duplicate Check Logic
-      const isDuplicate = (name: string) => {
-        // Check if any other filament has this exact name
-        return prev.some(f => f.id !== filament.id && (f.name || "耗材") === name);
-      };
-
+      let baseName = filament.name.trim() || "耗材";
+      const isDuplicate = (name: string) => prev.some(f => f.id !== filament.id && (f.name || "耗材") === name);
       let finalName = baseName;
-      
       if (isDuplicate(finalName)) {
         let counter = 1;
-        while (isDuplicate(`${baseName} (${counter})`)) {
-          counter++;
-        }
+        while (isDuplicate(`${baseName} (${counter})`)) counter++;
         finalName = `${baseName} (${counter})`;
       }
-
       const updatedFilament = { ...filament, name: finalName };
-
       const exists = prev.find(f => f.id === filament.id);
-      if (exists) {
-        return prev.map(f => f.id === filament.id ? updatedFilament : f);
-      }
-      return [...prev, updatedFilament];
+      return exists ? prev.map(f => f.id === filament.id ? updatedFilament : f) : [...prev, updatedFilament];
     });
   };
 
@@ -132,7 +111,8 @@ function App() {
     setAdvisorOpen(true);
   };
 
-  // Derived State
+  // --- 4. Render Helpers ---
+
   const filteredFilaments = filaments.filter(f => 
     f.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     f.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -143,22 +123,15 @@ function App() {
   const lowStockCount = filaments.filter(f => f.currentWeight < 200).length;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-20 relative">
       {/* Header */}
-      <header className="bg-white shadow-sm sticky top-0 z-30">
+      <header className="bg-white shadow-sm sticky top-[25px] z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Box className="w-8 h-8 text-indigo-600" />
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">SmartPrint <span className="text-indigo-600">库存</span></h1>
           </div>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setSettingsOpen(true)}
-              className="p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
-              title="设置 API Key"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
             <button onClick={handleAddClick} className="hidden sm:flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
               <Plus className="w-4 h-4" /> 添加耗材
             </button>
@@ -281,11 +254,6 @@ function App() {
           filament={filaments.find(f => f.id === selectedFilamentId)!}
         />
       )}
-
-      <SettingsModal 
-        isOpen={isSettingsOpen}
-        onClose={() => setSettingsOpen(false)}
-      />
 
       <MaterialAdvisor 
         isOpen={isAdvisorOpen}

@@ -1,35 +1,15 @@
 import { GoogleGenAI } from "@google/genai";
 import { MaterialType } from "../types";
-import { loadApiKey } from "./storageService";
 
-const getClient = (): GoogleGenAI | null => {
-  // 1. Try to get key from LocalStorage (User Settings)
-  let key = loadApiKey();
-
-  // 2. Fallback to Environment Variable (System Config)
-  // Check if process is defined to avoid crashing in some browser environments
-  if (!key && typeof process !== 'undefined' && process.env && process.env.API_KEY) {
-    key = process.env.API_KEY;
-  }
-
-  if (!key) return null;
-
-  try {
-    return new GoogleGenAI({ apiKey: key });
-  } catch (e) {
-    console.error("Failed to initialize Gemini Client", e);
-    return null;
-  }
+const getClient = (): GoogleGenAI => {
+  // API Key must be obtained exclusively from the environment variable process.env.API_KEY
+  // Assume this variable is pre-configured, valid, and accessible.
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 export const getMaterialAdvice = async (material: MaterialType, query: string): Promise<string> => {
-  const ai = getClient();
-
-  if (!ai) {
-    return "请点击右上角设置图标，配置您的 Gemini API Key 以使用 AI 顾问功能。";
-  }
-
   try {
+    const ai = getClient();
     const model = 'gemini-3-flash-preview';
     const systemInstruction = `你是一位专业的 3D 打印顾问。
     用户会询问关于特定耗材（如 PLA, PETG 等）的问题。
@@ -48,6 +28,6 @@ export const getMaterialAdvice = async (material: MaterialType, query: string): 
     return response.text || "暂时无法提供建议。";
   } catch (error) {
     console.error("Gemini API Error:", error);
-    return "AI 服务连接失败。请检查您的 API Key 是否有效，或网络是否通畅。";
+    return "AI 服务暂时不可用。";
   }
 };
