@@ -1,0 +1,5 @@
+{
+  "name": "SmartPrint Inventory",
+  "description": "A smart 3D printing filament inventory manager with persistence, usage tracking, and AI-powered material advice.",
+  "requestFramePermissions": []
+}
