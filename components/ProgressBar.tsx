@@ -20,7 +20,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ current, total, lowStockThres
   return (
     <div className="w-full">
       <div className="flex justify-between text-xs mb-1 font-medium text-gray-600">
-        <span>{Math.round(percentage)}% Left</span>
+        <span>剩余 {Math.round(percentage)}%</span>
         <span className={isLowStock ? "text-red-600 font-bold animate-pulse" : ""}>
            {current}g / {total}g
         </span>
@@ -33,7 +33,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ current, total, lowStockThres
       </div>
       {isLowStock && (
         <p className="text-xs text-red-500 mt-1 font-semibold flex items-center">
-          ⚠️ Low Stock: Please Restock
+          ⚠️ 库存不足：请补货
         </p>
       )}
     </div>

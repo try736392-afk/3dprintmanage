@@ -45,7 +45,7 @@ const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ isOpen, onClose, 
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
         <div className="flex justify-between items-center p-6 border-b border-gray-100">
           <h2 className="text-xl font-bold text-gray-800">
-            {initialData ? 'Edit Filament' : 'Add New Filament'}
+            {initialData ? '编辑耗材' : '添加新耗材'}
           </h2>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
             <X className="w-6 h-6 text-gray-500" />
@@ -55,30 +55,30 @@ const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ isOpen, onClose, 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name / Color Name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">名称 / 颜色</label>
               <input 
                 type="text" 
                 value={formData.name}
                 onChange={e => setFormData({...formData, name: e.target.value})}
                 className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g. Electric Blue"
+                placeholder="例如：电光蓝"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">品牌</label>
               <input 
                 type="text" 
                 value={formData.brand}
                 onChange={e => setFormData({...formData, brand: e.target.value})}
                 className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g. eSun"
+                placeholder="例如：eSun"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Material</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">材质</label>
               <select 
                 value={formData.material}
                 onChange={e => setFormData({...formData, material: e.target.value as MaterialType})}
@@ -90,7 +90,7 @@ const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ isOpen, onClose, 
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Color Hex</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">颜色代码 (Hex)</label>
               <div className="flex gap-2">
                 <input 
                   type="color" 
@@ -110,7 +110,7 @@ const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ isOpen, onClose, 
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Total Capacity (g)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">总容量 (g)</label>
               <input 
                 required
                 type="number" 
@@ -121,7 +121,7 @@ const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ isOpen, onClose, 
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Current Weight (g)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">当前重量 (g)</label>
               <input 
                 required
                 type="number"
@@ -140,14 +140,14 @@ const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ isOpen, onClose, 
               onClick={onClose}
               className="px-5 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
             >
-              Cancel
+              取消
             </button>
             <button 
               type="submit"
               className="px-5 py-2.5 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 shadow-md flex items-center gap-2 transition-all"
             >
               <Save className="w-4 h-4" />
-              Save Filament
+              保存耗材
             </button>
           </div>
         </form>

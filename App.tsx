@@ -28,9 +28,9 @@ function App() {
       // Demo Data for first run
       const now = Date.now();
       const demoData: Filament[] = [
-        { id: '1', name: 'Galaxy Black', brand: 'Prusament', material: MaterialType.PLA, colorHex: '#1a1a1a', totalWeight: 1000, currentWeight: 850, createdAt: now },
-        { id: '2', name: 'Signal Red', brand: 'eSun', material: MaterialType.PETG, colorHex: '#ef4444', totalWeight: 1000, currentWeight: 150, createdAt: now - 1000 },
-        { id: '3', name: 'Arctic White', brand: 'Polymaker', material: MaterialType.PLA, colorHex: '#f3f4f6', totalWeight: 1000, currentWeight: 920, createdAt: now - 2000 },
+        { id: '1', name: '星空黑', brand: 'Prusament', material: MaterialType.PLA, colorHex: '#1a1a1a', totalWeight: 1000, currentWeight: 850, createdAt: now },
+        { id: '2', name: '信号红', brand: 'eSun', material: MaterialType.PETG, colorHex: '#ef4444', totalWeight: 1000, currentWeight: 150, createdAt: now - 1000 },
+        { id: '3', name: '极地白', brand: 'Polymaker', material: MaterialType.PLA, colorHex: '#f3f4f6', totalWeight: 1000, currentWeight: 920, createdAt: now - 2000 },
       ];
       setFilaments(demoData);
       saveFilaments(demoData);
@@ -62,7 +62,7 @@ function App() {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this spool? History will be lost.')) {
+    if (window.confirm('确定要删除此耗材卷吗？历史记录将丢失。')) {
       setFilaments(prev => prev.filter(f => f.id !== id));
     }
   };
@@ -71,12 +71,12 @@ function App() {
     setFilaments(prev => {
       // 1. Determine Base Name
       let baseName = filament.name.trim();
-      if (!baseName) baseName = "Filament";
+      if (!baseName) baseName = "耗材";
 
       // 2. Duplicate Check Logic
       const isDuplicate = (name: string) => {
         // Check if any other filament has this exact name
-        return prev.some(f => f.id !== filament.id && (f.name || "Filament") === name);
+        return prev.some(f => f.id !== filament.id && (f.name || "耗材") === name);
       };
 
       let finalName = baseName;
@@ -136,10 +136,10 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Box className="w-8 h-8 text-indigo-600" />
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">SmartPrint <span className="text-indigo-600">Inventory</span></h1>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">SmartPrint <span className="text-indigo-600">库存</span></h1>
           </div>
           <button onClick={handleAddClick} className="hidden sm:flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
-            <Plus className="w-4 h-4" /> Add Spool
+            <Plus className="w-4 h-4" /> 添加耗材
           </button>
         </div>
       </header>
@@ -148,15 +148,15 @@ function App() {
         {/* Dashboard Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-            <span className="text-gray-500 text-sm font-medium mb-1">Total Spools</span>
+            <span className="text-gray-500 text-sm font-medium mb-1">耗材总数</span>
             <span className="text-3xl font-bold text-gray-900">{filaments.length}</span>
           </div>
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-            <span className="text-gray-500 text-sm font-medium mb-1">Total Weight Available</span>
+            <span className="text-gray-500 text-sm font-medium mb-1">总可用重量</span>
             <span className="text-3xl font-bold text-gray-900">{(totalStock / 1000).toFixed(1)} <span className="text-lg text-gray-400 font-normal">kg</span></span>
           </div>
            <div className={`p-6 rounded-2xl shadow-sm border flex flex-col ${lowStockCount > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100'}`}>
-            <span className={`${lowStockCount > 0 ? 'text-red-600' : 'text-gray-500'} text-sm font-medium mb-1`}>Low Stock Alerts</span>
+            <span className={`${lowStockCount > 0 ? 'text-red-600' : 'text-gray-500'} text-sm font-medium mb-1`}>低库存预警</span>
             <span className={`text-3xl font-bold ${lowStockCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{lowStockCount}</span>
           </div>
         </div>
@@ -167,7 +167,7 @@ function App() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input 
               type="text"
-              placeholder="Search filaments..."
+              placeholder="搜索耗材..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow shadow-sm"
@@ -197,7 +197,7 @@ function App() {
                 </div>
                 
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openAdvisor(filament.material)} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-lg" title="Ask AI Advisor">
+                  <button onClick={() => openAdvisor(filament.material)} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-lg" title="AI 顾问">
                     <Info className="w-4 h-4" />
                   </button>
                   <button onClick={() => handleEditClick(filament)} className="p-2 text-gray-400 hover:bg-gray-50 rounded-lg">
@@ -218,7 +218,7 @@ function App() {
                     onClick={() => openDeductModal(filament.id)}
                     className="w-full bg-gray-900 hover:bg-indigo-600 text-white font-medium py-2.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-gray-200"
                   >
-                    Confirm Print (Use Filament)
+                    确认打印 (扣除耗材)
                   </button>
                 </div>
               </div>
@@ -229,7 +229,7 @@ function App() {
           {filteredFilaments.length === 0 && (
             <div className="col-span-full py-20 text-center text-gray-400">
                <Box className="w-16 h-16 mx-auto mb-4 opacity-20" />
-               <p>No filaments found. Add one to get started!</p>
+               <p>未找到耗材。请添加一个开始使用！</p>
             </div>
           )}
         </div>

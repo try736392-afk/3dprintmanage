@@ -1,5 +1,5 @@
 {
-  "name": "SmartPrint Inventory",
-  "description": "A smart 3D printing filament inventory manager with persistence, usage tracking, and AI-powered material advice.",
+  "name": "智能耗材管理",
+  "description": "一个智能的 3D 打印耗材库存管理器，具有持久化存储、用量跟踪和 AI 材质建议功能。",
   "requestFramePermissions": []
 }

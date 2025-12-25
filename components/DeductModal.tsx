@@ -18,12 +18,12 @@ const DeductModal: React.FC<DeductModalProps> = ({ filament, isOpen, onClose, on
   const handleConfirm = () => {
     const val = parseFloat(amount);
     if (isNaN(val) || val <= 0) {
-      setError("Please enter a valid amount.");
+      setError("请输入有效的数量。");
       return;
     }
     
     if (val > filament.currentWeight) {
-      setError(`Over-draft prevented! You only have ${filament.currentWeight}g left.`);
+      setError(`库存不足！仅剩 ${filament.currentWeight}g。`);
       return;
     }
 
@@ -39,7 +39,7 @@ const DeductModal: React.FC<DeductModalProps> = ({ filament, isOpen, onClose, on
         <div className="bg-gray-50 p-4 flex justify-between items-center border-b border-gray-100">
           <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
             <Printer className="w-5 h-5 text-blue-600" />
-            Record Print Job
+            记录打印任务
           </h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-5 h-5" />
@@ -54,12 +54,12 @@ const DeductModal: React.FC<DeductModalProps> = ({ filament, isOpen, onClose, on
             />
             <div>
               <p className="font-semibold text-gray-900">{filament.name}</p>
-              <p className="text-xs text-gray-500">Available: {filament.currentWeight}g</p>
+              <p className="text-xs text-gray-500">可用库存: {filament.currentWeight}g</p>
             </div>
           </div>
 
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Filament Used (grams)
+            使用耗材 (克)
           </label>
           <div className="relative">
             <input
@@ -70,7 +70,7 @@ const DeductModal: React.FC<DeductModalProps> = ({ filament, isOpen, onClose, on
                 setError(null);
               }}
               className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-lg focus:border-blue-500 focus:ring-0 outline-none transition-colors"
-              placeholder="e.g. 45"
+              placeholder="例如 45"
               autoFocus
             />
             <span className="absolute right-4 top-3.5 text-gray-400 font-medium">g</span>
@@ -88,13 +88,13 @@ const DeductModal: React.FC<DeductModalProps> = ({ filament, isOpen, onClose, on
               onClick={onClose}
               className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
             >
-              Cancel
+              取消
             </button>
             <button 
               onClick={handleConfirm}
               className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all active:scale-95"
             >
-              Confirm Print
+              确认打印
             </button>
           </div>
         </div>
