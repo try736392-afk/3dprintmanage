@@ -5,13 +5,14 @@ import { getSupabase } from './supabaseClient';
 const TABLE_NAME = 'materials';
 
 // 数据库映射 (DB snake_case -> App camelCase)
-// 确保数据库中有对应的列: id, name, brand, material, color_hex, total_weight, current_weight, created_at, last_used
+// 确保数据库中有对应的列: id, name, brand, material, color, total_weight, current_weight, created_at, last_used
 const mapFromDb = (row: any): Filament => ({
   id: row.id,
   name: row.name,
   brand: row.brand,
   material: row.material,
-  colorHex: row.color_hex,
+  // 修正：数据库列名为 color
+  colorHex: row.color,
   totalWeight: row.total_weight,
   currentWeight: row.current_weight,
   // 确保 createdAt 是数字类型 (时间戳)，如果数据库返回 ISO 字符串则转换
@@ -26,7 +27,8 @@ const mapToDb = (filament: Filament) => ({
   name: filament.name,
   brand: filament.brand,
   material: filament.material,
-  color_hex: filament.colorHex,
+  // 修正：发送给数据库的字段名为 color
+  color: filament.colorHex,
   total_weight: filament.totalWeight,
   current_weight: filament.currentWeight,
   // 存储为 ISO 字符串 (timestamptz) 以兼容 Supabase 默认格式
