@@ -1,5 +1,5 @@
 import { Filament } from '../types';
-import { supabase } from './supabaseClient';
+import { getSupabase } from './supabaseClient';
 
 const TABLE_NAME = 'filaments';
 
@@ -13,7 +13,8 @@ const mapFromDb = (row: any): Filament => ({
   totalWeight: row.total_weight,
   currentWeight: row.current_weight,
   createdAt: row.created_at,
-  lastUsed: row.created_at ? new Date(row.created_at).toISOString() : undefined // Approximation
+  // Use stored last_used, fallback to createdAt if null
+  lastUsed: row.last_used || (row.created_at ? new Date(row.created_at).toISOString() : undefined)
 });
 
 // Map App camelCase to DB snake_case
@@ -25,10 +26,14 @@ const mapToDb = (filament: Filament) => ({
   color_hex: filament.colorHex,
   total_weight: filament.totalWeight,
   current_weight: filament.currentWeight,
-  created_at: filament.createdAt
+  created_at: filament.createdAt,
+  last_used: filament.lastUsed
 });
 
 export const fetchFilaments = async (): Promise<Filament[]> => {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Database not configured");
+
   const { data, error } = await supabase
     .from(TABLE_NAME)
     .select('*')
@@ -43,6 +48,9 @@ export const fetchFilaments = async (): Promise<Filament[]> => {
 };
 
 export const addFilament = async (filament: Filament): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Database not configured");
+
   const { error } = await supabase
     .from(TABLE_NAME)
     .insert([mapToDb(filament)]);
@@ -54,6 +62,9 @@ export const addFilament = async (filament: Filament): Promise<void> => {
 };
 
 export const updateFilament = async (filament: Filament): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Database not configured");
+
   const { error } = await supabase
     .from(TABLE_NAME)
     .update(mapToDb(filament))
@@ -66,6 +77,9 @@ export const updateFilament = async (filament: Filament): Promise<void> => {
 };
 
 export const deleteFilament = async (id: string): Promise<void> => {
+  const supabase = getSupabase();
+  if (!supabase) throw new Error("Database not configured");
+
   const { error } = await supabase
     .from(TABLE_NAME)
     .delete()
@@ -77,7 +91,5 @@ export const deleteFilament = async (id: string): Promise<void> => {
   }
 };
 
-// Deprecated LocalStorage functions kept empty to avoid breaking imports during migration if needed,
-// but in this refactor we will remove their usage from App.tsx
 export const loadFilaments = () => [];
 export const saveFilaments = () => {};

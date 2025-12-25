@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Filament, MaterialType } from './types';
 import { fetchFilaments, addFilament, updateFilament, deleteFilament as deleteFilamentService } from './services/storageService';
+import { isSupabaseConfigured } from './services/supabaseClient';
 import ProgressBar from './components/ProgressBar';
 import DeductModal from './components/DeductModal';
 import EditFilamentModal from './components/EditFilamentModal';
 import MaterialAdvisor from './components/MaterialAdvisor';
+import DatabaseConfigModal from './components/DatabaseConfigModal';
 import { Plus, Edit2, Trash2, Box, Search, Sparkles, Loader2, CloudOff } from 'lucide-react';
 
 function App() {
+  // Config State
+  const [isConfigured, setIsConfigured] = useState(true);
+
   // Data State
   const [filaments, setFilaments] = useState<Filament[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,7 +27,18 @@ function App() {
   const [isAdvisorOpen, setAdvisorOpen] = useState(false);
   const [advisorMaterial, setAdvisorMaterial] = useState<MaterialType>(MaterialType.PLA);
 
-  // --- Load Data ---
+  // --- Check Configuration & Load Data ---
+  useEffect(() => {
+    const configured = isSupabaseConfigured();
+    setIsConfigured(configured);
+
+    if (configured) {
+      loadData();
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
   const loadData = async () => {
     setLoading(true);
     setError(null);
@@ -36,10 +52,6 @@ function App() {
       setLoading(false);
     }
   };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   // --- Event Handlers ---
 
@@ -99,8 +111,6 @@ function App() {
       } else {
         await updateFilament(filamentToSave);
       }
-      // Optional: Refresh from server to ensure sync
-      // loadData(); 
     } catch (err) {
       console.error(err);
       alert("保存失败，请重试。");
@@ -122,7 +132,7 @@ function App() {
     const updatedFilament = {
       ...targetFilament,
       currentWeight: targetFilament.currentWeight - amount,
-      lastUsed: new Date().toISOString() // We don't save this to DB based on schema, but good for UI
+      lastUsed: new Date().toISOString()
     };
 
     // Optimistic UI update
@@ -144,6 +154,10 @@ function App() {
   };
 
   // --- Render Helpers ---
+
+  if (!isConfigured) {
+    return <DatabaseConfigModal onConfigured={() => setIsConfigured(true)} />;
+  }
 
   const filteredFilaments = filaments.filter(f => 
     f.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
