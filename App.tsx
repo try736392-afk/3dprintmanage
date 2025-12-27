@@ -7,6 +7,7 @@ import DeductModal from './components/DeductModal';
 import EditFilamentModal from './components/EditFilamentModal';
 import MaterialAdvisor from './components/MaterialAdvisor';
 import DatabaseConfigModal from './components/DatabaseConfigModal';
+import LowStockModal from './components/LowStockModal';
 import { Plus, Edit2, Trash2, Box, Search, Sparkles, Loader2, CloudOff } from 'lucide-react';
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
   const [selectedFilamentId, setSelectedFilamentId] = useState<string | null>(null);
   const [isAdvisorOpen, setAdvisorOpen] = useState(false);
   const [advisorMaterial, setAdvisorMaterial] = useState<MaterialType>(MaterialType.PLA);
+  const [isLowStockModalOpen, setLowStockModalOpen] = useState(false);
 
   // --- Check Configuration & Load Data ---
   useEffect(() => {
@@ -166,7 +168,10 @@ function App() {
   );
 
   const totalStock = filaments.reduce((acc, f) => acc + f.currentWeight, 0);
-  const lowStockCount = filaments.filter(f => f.currentWeight < 200).length;
+  
+  // Calculate low stock filaments (less than 200g)
+  const lowStockFilaments = filaments.filter(f => f.currentWeight < 200);
+  const lowStockCount = lowStockFilaments.length;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 relative">
@@ -219,9 +224,21 @@ function App() {
                 <span className="text-gray-500 text-sm font-medium mb-1">总可用重量</span>
                 <span className="text-3xl font-bold text-gray-900">{(totalStock / 1000).toFixed(1)} <span className="text-lg text-gray-400 font-normal">kg</span></span>
               </div>
-              <div className={`p-6 rounded-2xl shadow-sm border flex flex-col ${lowStockCount > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100'}`}>
-                <span className={`${lowStockCount > 0 ? 'text-red-600' : 'text-gray-500'} text-sm font-medium mb-1`}>低库存预警</span>
+              
+              {/* Interactive Low Stock Card */}
+              <div 
+                onClick={() => setLowStockModalOpen(true)}
+                className={`p-6 rounded-2xl shadow-sm border flex flex-col cursor-pointer transition-all active:scale-95 hover:shadow-md select-none ${lowStockCount > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100 hover:border-gray-300'}`}
+              >
+                <div className="flex justify-between items-start">
+                  <span className={`${lowStockCount > 0 ? 'text-red-600' : 'text-gray-500'} text-sm font-medium mb-1`}>低库存预警</span>
+                  {lowStockCount > 0 && <span className="flex h-3 w-3 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                  </span>}
+                </div>
                 <span className={`text-3xl font-bold ${lowStockCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{lowStockCount}</span>
+                <span className="text-xs text-gray-400 mt-1">点击查看详情</span>
               </div>
             </div>
 
@@ -330,6 +347,12 @@ function App() {
         isOpen={isAdvisorOpen}
         onClose={() => setAdvisorOpen(false)}
         defaultMaterial={advisorMaterial}
+      />
+
+      <LowStockModal
+        isOpen={isLowStockModalOpen}
+        onClose={() => setLowStockModalOpen(false)}
+        filaments={lowStockFilaments}
       />
     </div>
   );
