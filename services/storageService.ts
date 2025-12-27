@@ -1,7 +1,7 @@
 import { Filament } from '../types';
 import { getSupabase } from './supabaseClient';
 
-// 修改：表名统一为 'materials'
+// 确保表名为 'materials'
 const TABLE_NAME = 'materials';
 
 // 数据库映射 (DB snake_case -> App camelCase)
@@ -11,7 +11,7 @@ const mapFromDb = (row: any): Filament => ({
   name: row.name,
   brand: row.brand,
   material: row.material,
-  // 修正：数据库列名为 color
+  // 映射数据库的 color 字段 到应用的 colorHex
   colorHex: row.color,
   totalWeight: row.total_weight,
   currentWeight: row.current_weight,
@@ -27,7 +27,7 @@ const mapToDb = (filament: Filament) => ({
   name: filament.name,
   brand: filament.brand,
   material: filament.material,
-  // 修正：发送给数据库的字段名为 color
+  // 映射应用的 colorHex 到数据库的 color 字段
   color: filament.colorHex,
   total_weight: filament.totalWeight,
   current_weight: filament.currentWeight,

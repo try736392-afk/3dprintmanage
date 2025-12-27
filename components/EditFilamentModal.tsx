@@ -91,12 +91,12 @@ const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ isOpen, onClose, 
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">颜色代码 (Hex)</label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <input 
                   type="color" 
                   value={formData.colorHex}
                   onChange={e => setFormData({...formData, colorHex: e.target.value})}
-                  className="h-10 w-12 rounded cursor-pointer border-0 p-0"
+                  className="h-10 w-12 flex-shrink-0 rounded cursor-pointer border-none p-0 bg-transparent"
                 />
                 <input 
                   type="text" 
