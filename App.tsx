@@ -8,7 +8,7 @@ import EditFilamentModal from './components/EditFilamentModal';
 import MaterialAdvisor from './components/MaterialAdvisor';
 import DatabaseConfigModal from './components/DatabaseConfigModal';
 import LowStockModal from './components/LowStockModal';
-import { Plus, Edit2, Trash2, Box, Search, Sparkles, Loader2, CloudOff } from 'lucide-react';
+import { Plus, Edit2, Trash2, Box, Search, Sparkles, Loader2, CloudOff, LayoutList, LayoutGrid } from 'lucide-react';
 
 function App() {
   // Config State
@@ -21,6 +21,13 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   
   // UI States
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
+    // Load view preference from local storage
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('filamentViewMode') as 'list' | 'grid') || 'list';
+    }
+    return 'list';
+  });
   const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [editingFilament, setEditingFilament] = useState<Filament | undefined>(undefined);
   const [isDeductModalOpen, setDeductModalOpen] = useState(false);
@@ -57,6 +64,11 @@ function App() {
 
   // --- Event Handlers ---
 
+  const toggleViewMode = (mode: 'list' | 'grid') => {
+    setViewMode(mode);
+    localStorage.setItem('filamentViewMode', mode);
+  };
+
   const handleAddClick = () => {
     setEditingFilament(undefined);
     setEditModalOpen(true);
@@ -67,7 +79,8 @@ function App() {
     setEditModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     if (window.confirm('确定要删除此耗材卷吗？此操作将同步删除云端数据。')) {
       // Optimistic update
       const previousFilaments = [...filaments];
@@ -120,7 +133,8 @@ function App() {
     }
   };
 
-  const openDeductModal = (id: string) => {
+  const openDeductModal = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setSelectedFilamentId(id);
     setDeductModalOpen(true);
   };
@@ -150,7 +164,8 @@ function App() {
     }
   };
 
-  const openAdvisor = (material: MaterialType) => {
+  const openAdvisor = (material: MaterialType, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
     setAdvisorMaterial(material);
     setAdvisorOpen(true);
   };
@@ -174,7 +189,7 @@ function App() {
   const lowStockCount = lowStockFilaments.length;
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20 relative">
+    <div className="min-h-screen bg-gray-50 pb-24 relative">
       {/* DEBUG BANNER */}
       <div className="w-full bg-red-100 border-b border-red-300 p-2 text-center text-red-600 font-bold font-mono z-50">
         Debug: App is running
@@ -242,8 +257,8 @@ function App() {
               </div>
             </div>
 
-            {/* Search & Filter */}
-            <div className="mb-6 flex gap-4">
+            {/* Search & View Toggle */}
+            <div className="mb-6 flex gap-3">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input 
@@ -254,66 +269,132 @@ function App() {
                   className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow shadow-sm"
                 />
               </div>
+              
+              {/* View Toggle Buttons */}
+              <div className="bg-white border border-gray-200 rounded-xl p-1 flex items-center shadow-sm">
+                <button 
+                  onClick={() => toggleViewMode('list')}
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+                  title="列表视图"
+                >
+                  <LayoutList className="w-5 h-5" />
+                </button>
+                <div className="w-px h-6 bg-gray-200 mx-1"></div>
+                <button 
+                  onClick={() => toggleViewMode('grid')}
+                  className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
+                  title="网格视图"
+                >
+                  <LayoutGrid className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
-            {/* Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {filteredFilaments.map(filament => (
-                <div key={filament.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden group">
-                  {/* Card Header */}
-                  <div className="p-5 flex justify-between items-start">
-                    <div className="flex gap-4">
+            {/* List View */}
+            {viewMode === 'list' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {filteredFilaments.map(filament => (
+                  <div key={filament.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden group">
+                    {/* Card Header */}
+                    <div className="p-5 flex justify-between items-start">
+                      <div className="flex gap-4">
+                        <div 
+                          className="w-16 h-16 rounded-xl shadow-inner border border-black/5 shrink-0" 
+                          style={{ backgroundColor: filament.colorHex }}
+                        />
+                        <div>
+                          <h3 className="font-bold text-lg text-gray-900 group-hover:text-indigo-600 transition-colors">{filament.name}</h3>
+                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                            <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide">{filament.material}</span>
+                            <span>•</span>
+                            <span>{filament.brand}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={(e) => openAdvisor(filament.material, e)} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-lg" title="AI 顾问">
+                          <Sparkles className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => handleEditClick(filament)} className="p-2 text-gray-400 hover:bg-gray-50 rounded-lg">
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={(e) => handleDelete(filament.id, e)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Card Body */}
+                    <div className="px-5 pb-5">
+                      <ProgressBar current={filament.currentWeight} total={filament.totalWeight} />
+                      
+                      <div className="mt-5">
+                        <button 
+                          onClick={(e) => openDeductModal(filament.id, e)}
+                          className="w-full bg-gray-900 hover:bg-indigo-600 text-white font-medium py-2.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-gray-200"
+                        >
+                          确认打印 (扣除耗材)
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Grid View (Compact) */}
+            {viewMode === 'grid' && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
+                {filteredFilaments.map(filament => {
+                  const percentage = Math.min(100, Math.max(0, (filament.currentWeight / filament.totalWeight) * 100));
+                  const isLowStock = filament.currentWeight < 200;
+                  
+                  return (
+                    <div 
+                      key={filament.id} 
+                      onClick={() => handleEditClick(filament)}
+                      className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md transition-all active:scale-95 flex flex-col relative group aspect-[3/4]"
+                    >
+                      {/* Large Color Block */}
                       <div 
-                        className="w-16 h-16 rounded-xl shadow-inner border border-black/5 shrink-0" 
+                        className="flex-1 w-full relative" 
                         style={{ backgroundColor: filament.colorHex }}
-                      />
-                      <div>
-                        <h3 className="font-bold text-lg text-gray-900 group-hover:text-indigo-600 transition-colors">{filament.name}</h3>
-                        <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                          <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide">{filament.material}</span>
-                          <span>•</span>
-                          <span>{filament.brand}</span>
+                      >
+                         {/* Low stock badge */}
+                         {isLowStock && (
+                            <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white shadow-sm animate-pulse"></div>
+                         )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="p-2 bg-white flex flex-col justify-between shrink-0 h-[35%]">
+                        <div>
+                          <p className="font-bold text-xs text-gray-900 truncate">{filament.name}</p>
+                          <p className="text-[10px] text-gray-500 font-medium uppercase mt-0.5">{filament.material}</p>
+                        </div>
+                        
+                        {/* Micro Progress Bar */}
+                        <div className="w-full bg-gray-100 rounded-full h-1 mt-2 overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full ${isLowStock ? 'bg-red-500' : (percentage < 50 ? 'bg-yellow-500' : 'bg-emerald-500')}`} 
+                            style={{ width: `${percentage}%` }}
+                          />
                         </div>
                       </div>
                     </div>
-                    
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openAdvisor(filament.material)} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-lg" title="AI 顾问">
-                        <Sparkles className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleEditClick(filament)} className="p-2 text-gray-400 hover:bg-gray-50 rounded-lg">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(filament.id)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
+                  );
+                })}
+              </div>
+            )}
 
-                  {/* Card Body */}
-                  <div className="px-5 pb-5">
-                    <ProgressBar current={filament.currentWeight} total={filament.totalWeight} />
-                    
-                    <div className="mt-5">
-                      <button 
-                        onClick={() => openDeductModal(filament.id)}
-                        className="w-full bg-gray-900 hover:bg-indigo-600 text-white font-medium py-2.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-gray-200"
-                      >
-                        确认打印 (扣除耗材)
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {/* Empty State */}
-              {filteredFilaments.length === 0 && (
-                <div className="col-span-full py-20 text-center text-gray-400">
-                  <Box className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                  <p>云端暂无数据。添加一个开始使用！</p>
-                </div>
-              )}
-            </div>
+            {/* Empty State */}
+            {filteredFilaments.length === 0 && (
+              <div className="py-20 text-center text-gray-400">
+                <Box className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                <p>云端暂无数据。添加一个开始使用！</p>
+              </div>
+            )}
           </>
         )}
       </main>
