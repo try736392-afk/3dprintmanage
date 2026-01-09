@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calculator, Weight, Layers, ChevronRight, Box } from 'lucide-react';
+import { Calculator, Weight, Layers, ChevronRight, Box, Percent } from 'lucide-react';
 
 interface CabinetCalculatorProps {
   onDeduct: (weight: number) => void;
@@ -21,7 +21,8 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     shelves: '2',
     wallThickness: '2',
     infill: '15',
-    material: 'PLA'
+    material: 'PLA',
+    compensation: '1.15' // 新增：默认 1.15 (即 +15% 冗余)
   });
 
   const [estimatedWeight, setEstimatedWeight] = useState(0);
@@ -38,6 +39,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     const s = parse(params.shelves);
     const infillRate = parse(params.infill) / 100;
     const density = MATERIAL_DENSITIES[params.material] || 1.24;
+    const compFactor = parse(params.compensation);
 
     // 1. 计算总表面积 (外壳 + 层板)
     // 外壳: 2*(wd + wh + dh)
@@ -51,11 +53,11 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     const totalVolume = w * d * h;
     const internalVolume = Math.max(0, totalVolume - shellVolume);
     
-    // 4. 总估算体积 (cm³)
-    const estimatedVolume = shellVolume + (internalVolume * infillRate);
+    // 4. 总估算几何体积 (cm³)
+    const geometricVolume = shellVolume + (internalVolume * infillRate);
     
-    // 5. 重量 (g)
-    const weight = estimatedVolume * density;
+    // 5. 最终估算重量 (g) = (体积 * 密度) * 补偿系数
+    const weight = (geometricVolume * density) * compFactor;
     setEstimatedWeight(Math.round(weight));
   }, [params]);
 
@@ -73,7 +75,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
           <Calculator className="w-5 h-5 text-indigo-600" />
           <h3 className="font-bold text-indigo-900">柜体模型耗材估算</h3>
         </div>
-        <div className="flex items-center gap-1.5 bg-white/50 px-2 py-1 rounded-lg border border-indigo-100">
+        <div className="flex items-center gap-1.5 bg-white/50 px-2 py-1 rounded-lg border border-indigo-100 shadow-inner">
            <Box className="w-3.5 h-3.5 text-indigo-400" />
            <select 
              value={params.material}
@@ -88,6 +90,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
       </div>
       
       <div className="p-5 space-y-4">
+        {/* 基础尺寸 */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">宽度 (Width, mm)</label>
@@ -134,6 +137,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
           </div>
         </div>
 
+        {/* 打印设置与补偿 */}
         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-gray-50">
            <div className="space-y-1">
             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">壁厚 (Shell, mm)</label>
@@ -155,15 +159,34 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
               className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
             />
           </div>
+          {/* 新增：补偿系数输入框 */}
+          <div className="space-y-1 col-span-2">
+            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+              补偿系数 (Factor) 
+              <span className="text-[9px] font-normal lowercase bg-gray-100 px-1 rounded">用于抵消切片损耗</span>
+            </label>
+            <div className="relative">
+              <Percent className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-gray-400" />
+              <input 
+                type="text" 
+                inputMode="decimal"
+                value={params.compensation}
+                onChange={e => handleChange('compensation', e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition-all"
+                placeholder="例如 1.15"
+              />
+            </div>
+          </div>
         </div>
 
+        {/* 结果显示与操作 */}
         <div className="mt-4 p-4 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-100 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-lg">
               <Weight className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[10px] text-indigo-100 uppercase font-bold tracking-widest">预计消耗 ({params.material})</p>
+              <p className="text-[10px] text-indigo-100 uppercase font-bold tracking-widest">最终估算用量 ({params.material})</p>
               <p className="text-2xl font-black leading-none mt-1">{estimatedWeight} <span className="text-sm font-normal">g</span></p>
             </div>
           </div>
