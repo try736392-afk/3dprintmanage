@@ -8,6 +8,7 @@ import EditFilamentModal from './components/EditFilamentModal';
 import MaterialAdvisor from './components/MaterialAdvisor';
 import DatabaseConfigModal from './components/DatabaseConfigModal';
 import LowStockModal from './components/LowStockModal';
+import CabinetCalculator from './components/CabinetCalculator';
 import { Plus, Edit2, Trash2, Box, Search, Sparkles, Loader2, CloudOff, LayoutList, LayoutGrid } from 'lucide-react';
 
 function App() {
@@ -22,7 +23,6 @@ function App() {
   
   // UI States
   const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
-    // Load view preference from local storage
     if (typeof window !== 'undefined') {
       return (localStorage.getItem('filamentViewMode') as 'list' | 'grid') || 'list';
     }
@@ -32,6 +32,7 @@ function App() {
   const [editingFilament, setEditingFilament] = useState<Filament | undefined>(undefined);
   const [isDeductModalOpen, setDeductModalOpen] = useState(false);
   const [selectedFilamentId, setSelectedFilamentId] = useState<string | null>(null);
+  const [prefilledWeight, setPrefilledWeight] = useState<number | undefined>(undefined);
   const [isAdvisorOpen, setAdvisorOpen] = useState(false);
   const [advisorMaterial, setAdvisorMaterial] = useState<MaterialType>(MaterialType.PLA);
   const [isLowStockModalOpen, setLowStockModalOpen] = useState(false);
@@ -82,10 +83,8 @@ function App() {
   const handleDelete = async (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (window.confirm('确定要删除此耗材卷吗？此操作将同步删除云端数据。')) {
-      // Optimistic update
       const previousFilaments = [...filaments];
       setFilaments(prev => prev.filter(f => f.id !== id));
-      
       try {
         await deleteFilamentService(id);
       } catch (err) {
@@ -96,13 +95,8 @@ function App() {
   };
 
   const handleSaveFilament = async (filament: Filament) => {
-    // Optimistic Update Setup
     const previousFilaments = [...filaments];
-    
-    // Check if it's new or existing
     const isNew = !filaments.find(f => f.id === filament.id);
-    
-    // Logic to handle duplicate names (Client side check)
     let baseName = filament.name.trim() || "耗材";
     const isDuplicate = (name: string) => filaments.some(f => f.id !== filament.id && (f.name || "耗材") === name);
     let finalName = baseName;
@@ -113,7 +107,6 @@ function App() {
     }
     const filamentToSave = { ...filament, name: finalName };
 
-    // Update UI immediately
     if (isNew) {
       setFilaments(prev => [filamentToSave, ...prev]);
     } else {
@@ -133,15 +126,27 @@ function App() {
     }
   };
 
-  const openDeductModal = (id: string, e?: React.MouseEvent) => {
+  const openDeductModal = (id: string, weight?: number, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     setSelectedFilamentId(id);
+    setPrefilledWeight(weight);
     setDeductModalOpen(true);
+  };
+
+  const handleCalculatorDeduct = (weight: number) => {
+    setPrefilledWeight(weight);
+    // 自动滑动到列表或提示用户选择
+    const listElement = document.getElementById('filament-list-header');
+    if (listElement) {
+      listElement.scrollIntoView({ behavior: 'smooth' });
+    }
+    // 我们不需要在这里打开模态框，而是让用户点击列表中的任何一个“扣除”按钮
+    // 此时 prefilledWeight 已经被设置，下次打开 DeductModal 时会自动填充
+    alert(`已记录 ${weight}g。请在下方的耗材列表中点击“确认打印”来从指定耗材中扣除。`);
   };
 
   const handleDeductConfirm = async (amount: number) => {
     if (!selectedFilamentId) return;
-    
     const targetFilament = filaments.find(f => f.id === selectedFilamentId);
     if (!targetFilament) return;
 
@@ -151,7 +156,6 @@ function App() {
       lastUsed: new Date().toISOString()
     };
 
-    // Optimistic UI update
     const previousFilaments = [...filaments];
     setFilaments(prev => prev.map(f => f.id === selectedFilamentId ? updatedFilament : f));
 
@@ -161,6 +165,8 @@ function App() {
       console.error(err);
       alert("更新失败。");
       setFilaments(previousFilaments);
+    } finally {
+      setPrefilledWeight(undefined); // 扣除完成后重置
     }
   };
 
@@ -169,8 +175,6 @@ function App() {
     setAdvisorMaterial(material);
     setAdvisorOpen(true);
   };
-
-  // --- Render Helpers ---
 
   if (!isConfigured) {
     return <DatabaseConfigModal onConfigured={() => setIsConfigured(true)} />;
@@ -183,203 +187,137 @@ function App() {
   );
 
   const totalStock = filaments.reduce((acc, f) => acc + f.currentWeight, 0);
-  
-  // Calculate low stock filaments (less than 200g)
   const lowStockFilaments = filaments.filter(f => f.currentWeight < 200);
   const lowStockCount = lowStockFilaments.length;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24 relative">
-      {/* DEBUG BANNER */}
-      <div className="w-full bg-red-100 border-b border-red-300 p-2 text-center text-red-600 font-bold font-mono z-50">
-        Debug: App is running
-      </div>
-
-      {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Box className="w-8 h-8 text-indigo-600" />
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">SmartPrint <span className="text-indigo-600">云库存</span></h1>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleAddClick} className="hidden sm:flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
-              <Plus className="w-4 h-4" /> 添加耗材
-            </button>
-          </div>
+          <button onClick={handleAddClick} className="hidden sm:flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium">
+            <Plus className="w-4 h-4" /> 添加耗材
+          </button>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Loading / Error States */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-20 text-gray-500">
-            <Loader2 className="w-10 h-10 animate-spin text-indigo-600 mb-4" />
-            <p>正在同步云端数据...</p>
-          </div>
-        )}
-
-        {error && !loading && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center text-red-800 mb-8">
-            <CloudOff className="w-10 h-10 mx-auto mb-2 text-red-400" />
-            <p className="font-bold">{error}</p>
-            <button onClick={loadData} className="mt-4 text-sm underline hover:text-red-900">重试连接</button>
-          </div>
-        )}
-
         {!loading && !error && (
           <>
-            {/* Dashboard Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                <span className="text-gray-500 text-sm font-medium mb-1">耗材总数</span>
-                <span className="text-3xl font-bold text-gray-900">{filaments.length}</span>
-              </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-                <span className="text-gray-500 text-sm font-medium mb-1">总可用重量</span>
-                <span className="text-3xl font-bold text-gray-900">{(totalStock / 1000).toFixed(1)} <span className="text-lg text-gray-400 font-normal">kg</span></span>
-              </div>
-              
-              {/* Interactive Low Stock Card */}
-              <div 
-                onClick={() => setLowStockModalOpen(true)}
-                className={`p-6 rounded-2xl shadow-sm border flex flex-col cursor-pointer transition-all active:scale-95 hover:shadow-md select-none ${lowStockCount > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100 hover:border-gray-300'}`}
-              >
-                <div className="flex justify-between items-start">
-                  <span className={`${lowStockCount > 0 ? 'text-red-600' : 'text-gray-500'} text-sm font-medium mb-1`}>低库存预警</span>
-                  {lowStockCount > 0 && <span className="flex h-3 w-3 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-                  </span>}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              {/* Left Column: Stats & Calculator */}
+              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                  <span className="text-gray-500 text-sm font-medium mb-1">可用重量 (总计)</span>
+                  <span className="text-4xl font-black text-gray-900">{(totalStock / 1000).toFixed(1)} <span className="text-xl text-gray-400 font-normal">kg</span></span>
                 </div>
-                <span className={`text-3xl font-bold ${lowStockCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{lowStockCount}</span>
-                <span className="text-xs text-gray-400 mt-1">点击查看详情</span>
+                
+                <div 
+                  onClick={() => setLowStockModalOpen(true)}
+                  className={`p-6 rounded-2xl shadow-sm border flex flex-col cursor-pointer transition-all active:scale-95 hover:shadow-md select-none ${lowStockCount > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100'}`}
+                >
+                  <div className="flex justify-between items-start">
+                    <span className={`${lowStockCount > 0 ? 'text-red-600' : 'text-gray-500'} text-sm font-medium mb-1`}>低库存预警</span>
+                    {lowStockCount > 0 && <span className="flex h-3 w-3 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                    </span>}
+                  </div>
+                  <span className={`text-4xl font-black ${lowStockCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{lowStockCount}</span>
+                  <span className="text-xs text-gray-400 mt-1">点击查看预警名单</span>
+                </div>
+              </div>
+
+              {/* Right Column: New Calculator Card */}
+              <div className="lg:col-span-1">
+                <CabinetCalculator onDeduct={handleCalculatorDeduct} />
               </div>
             </div>
 
-            {/* Search & View Toggle */}
-            <div className="mb-6 flex gap-3">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input 
-                  type="text"
-                  placeholder="搜索耗材..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow shadow-sm"
-                />
-              </div>
+            {/* List Header & Controls */}
+            <div id="filament-list-header" className="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                库存列表 
+                {prefilledWeight && <span className="text-xs bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full animate-pulse">待扣除: {prefilledWeight}g</span>}
+              </h2>
               
-              {/* View Toggle Buttons */}
-              <div className="bg-white border border-gray-200 rounded-xl p-1 flex items-center shadow-sm">
-                <button 
-                  onClick={() => toggleViewMode('list')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
-                  title="列表视图"
-                >
-                  <LayoutList className="w-5 h-5" />
-                </button>
-                <div className="w-px h-6 bg-gray-200 mx-1"></div>
-                <button 
-                  onClick={() => toggleViewMode('grid')}
-                  className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-600 shadow-sm' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'}`}
-                  title="网格视图"
-                >
-                  <LayoutGrid className="w-5 h-5" />
-                </button>
+              <div className="flex gap-3 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input 
+                    type="text"
+                    placeholder="搜索耗材..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm text-sm"
+                  />
+                </div>
+                
+                <div className="bg-white border border-gray-200 rounded-xl p-1 flex items-center shadow-sm">
+                  <button onClick={() => toggleViewMode('list')} className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-400'}`}>
+                    <LayoutList className="w-5 h-5" />
+                  </button>
+                  <button onClick={() => toggleViewMode('grid')} className={`p-2 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-400'}`}>
+                    <LayoutGrid className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* List View */}
-            {viewMode === 'list' && (
+            {/* Content Rendering (List/Grid) */}
+            {viewMode === 'list' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredFilaments.map(filament => (
                   <div key={filament.id} className="bg-white rounded-2xl shadow-sm hover:shadow-md transition-shadow border border-gray-100 overflow-hidden group">
-                    {/* Card Header */}
                     <div className="p-5 flex justify-between items-start">
                       <div className="flex gap-4">
-                        <div 
-                          className="w-16 h-16 rounded-xl shadow-inner border border-black/5 shrink-0" 
-                          style={{ backgroundColor: filament.colorHex }}
-                        />
+                        <div className="w-16 h-16 rounded-xl shadow-inner border border-black/5 shrink-0" style={{ backgroundColor: filament.colorHex }} />
                         <div>
-                          <h3 className="font-bold text-lg text-gray-900 group-hover:text-indigo-600 transition-colors">{filament.name}</h3>
+                          <h3 className="font-bold text-lg text-gray-900 truncate max-w-[150px]">{filament.name}</h3>
                           <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                            <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide">{filament.material}</span>
-                            <span>•</span>
+                            <span className="bg-gray-100 px-2 py-0.5 rounded text-[10px] font-bold uppercase">{filament.material}</span>
                             <span>{filament.brand}</span>
                           </div>
                         </div>
                       </div>
-                      
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={(e) => openAdvisor(filament.material, e)} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-lg" title="AI 顾问">
-                          <Sparkles className="w-4 h-4" />
-                        </button>
-                        <button onClick={() => handleEditClick(filament)} className="p-2 text-gray-400 hover:bg-gray-50 rounded-lg">
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button onClick={(e) => handleDelete(filament.id, e)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <button onClick={(e) => openAdvisor(filament.material, e)} className="p-2 text-indigo-400 hover:bg-indigo-50 rounded-lg"><Sparkles className="w-4 h-4" /></button>
+                        <button onClick={() => handleEditClick(filament)} className="p-2 text-gray-400 hover:bg-gray-50 rounded-lg"><Edit2 className="w-4 h-4" /></button>
+                        <button onClick={(e) => handleDelete(filament.id, e)} className="p-2 text-gray-400 hover:bg-red-50 hover:text-red-500 rounded-lg"><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </div>
-
-                    {/* Card Body */}
                     <div className="px-5 pb-5">
                       <ProgressBar current={filament.currentWeight} total={filament.totalWeight} />
-                      
-                      <div className="mt-5">
-                        <button 
-                          onClick={(e) => openDeductModal(filament.id, e)}
-                          className="w-full bg-gray-900 hover:bg-indigo-600 text-white font-medium py-2.5 rounded-xl transition-all active:scale-95 shadow-lg shadow-gray-200"
-                        >
-                          确认打印 (扣除耗材)
-                        </button>
-                      </div>
+                      <button 
+                        onClick={(e) => openDeductModal(filament.id, prefilledWeight, e)}
+                        className={`w-full mt-5 py-2.5 rounded-xl font-bold transition-all active:scale-95 shadow-lg ${prefilledWeight ? 'bg-indigo-600 text-white animate-pulse shadow-indigo-200' : 'bg-gray-900 text-white shadow-gray-200'}`}
+                      >
+                        {prefilledWeight ? `应用并扣除 ${prefilledWeight}g` : '确认打印 (记录用量)'}
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
-            )}
-
-            {/* Grid View (Compact) */}
-            {viewMode === 'grid' && (
+            ) : (
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3">
                 {filteredFilaments.map(filament => {
-                  const percentage = Math.min(100, Math.max(0, (filament.currentWeight / filament.totalWeight) * 100));
-                  const isLowStock = filament.currentWeight < 200;
-                  
+                  const isLow = filament.currentWeight < 200;
                   return (
                     <div 
                       key={filament.id} 
-                      onClick={() => handleEditClick(filament)}
-                      className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-md transition-all active:scale-95 flex flex-col relative group aspect-[3/4]"
+                      onClick={() => openDeductModal(filament.id, prefilledWeight)}
+                      className={`bg-white rounded-xl shadow-sm border overflow-hidden cursor-pointer hover:shadow-md transition-all active:scale-95 flex flex-col aspect-[3/4] relative ${prefilledWeight ? 'ring-2 ring-indigo-500 ring-offset-2' : 'border-gray-100'}`}
                     >
-                      {/* Large Color Block */}
-                      <div 
-                        className="flex-1 w-full relative" 
-                        style={{ backgroundColor: filament.colorHex }}
-                      >
-                         {/* Low stock badge */}
-                         {isLowStock && (
-                            <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white shadow-sm animate-pulse"></div>
-                         )}
+                      <div className="flex-1 w-full" style={{ backgroundColor: filament.colorHex }}>
+                         {isLow && <div className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white animate-pulse" />}
                       </div>
-
-                      {/* Content */}
-                      <div className="p-2 bg-white flex flex-col justify-between shrink-0 h-[35%]">
-                        <div>
-                          <p className="font-bold text-xs text-gray-900 truncate">{filament.name}</p>
-                          <p className="text-[10px] text-gray-500 font-medium uppercase mt-0.5">{filament.material}</p>
-                        </div>
-                        
-                        {/* Micro Progress Bar */}
-                        <div className="w-full bg-gray-100 rounded-full h-1 mt-2 overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full ${isLowStock ? 'bg-red-500' : (percentage < 50 ? 'bg-yellow-500' : 'bg-emerald-500')}`} 
-                            style={{ width: `${percentage}%` }}
-                          />
+                      <div className="p-2 bg-white h-[35%] flex flex-col justify-between">
+                        <p className="font-bold text-[10px] truncate">{filament.name}</p>
+                        <div className="w-full bg-gray-100 h-1 rounded-full overflow-hidden">
+                          <div className={`h-full ${isLow ? 'bg-red-500' : 'bg-emerald-500'}`} style={{ width: `${(filament.currentWeight/filament.totalWeight)*100}%` }} />
                         </div>
                       </div>
                     </div>
@@ -387,54 +325,16 @@ function App() {
                 })}
               </div>
             )}
-
-            {/* Empty State */}
-            {filteredFilaments.length === 0 && (
-              <div className="py-20 text-center text-gray-400">
-                <Box className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                <p>云端暂无数据。添加一个开始使用！</p>
-              </div>
-            )}
           </>
         )}
       </main>
 
-      {/* Floating Action Button (Mobile) */}
-      <button 
-        onClick={handleAddClick}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center sm:hidden z-40 hover:bg-indigo-700 transition-colors"
-      >
-        <Plus className="w-6 h-6" />
-      </button>
+      <button onClick={handleAddClick} className="fixed bottom-6 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center sm:hidden z-40"><Plus className="w-6 h-6" /></button>
 
-      {/* Modals */}
-      <EditFilamentModal 
-        isOpen={isEditModalOpen} 
-        onClose={() => setEditModalOpen(false)} 
-        onSave={handleSaveFilament}
-        initialData={editingFilament}
-      />
-
-      {selectedFilamentId && (
-        <DeductModal 
-          isOpen={isDeductModalOpen}
-          onClose={() => setDeductModalOpen(false)}
-          onConfirm={handleDeductConfirm}
-          filament={filaments.find(f => f.id === selectedFilamentId)!}
-        />
-      )}
-
-      <MaterialAdvisor 
-        isOpen={isAdvisorOpen}
-        onClose={() => setAdvisorOpen(false)}
-        defaultMaterial={advisorMaterial}
-      />
-
-      <LowStockModal
-        isOpen={isLowStockModalOpen}
-        onClose={() => setLowStockModalOpen(false)}
-        filaments={lowStockFilaments}
-      />
+      <EditFilamentModal isOpen={isEditModalOpen} onClose={() => setEditModalOpen(false)} onSave={handleSaveFilament} initialData={editingFilament} />
+      {selectedFilamentId && <DeductModal isOpen={isDeductModalOpen} onClose={() => setDeductModalOpen(false)} onConfirm={handleDeductConfirm} filament={filaments.find(f => f.id === selectedFilamentId)!} initialAmount={prefilledWeight?.toString()} />}
+      <MaterialAdvisor isOpen={isAdvisorOpen} onClose={() => setAdvisorOpen(false)} defaultMaterial={advisorMaterial} />
+      <LowStockModal isOpen={isLowStockModalOpen} onClose={() => setLowStockModalOpen(false)} filaments={lowStockFilaments} />
     </div>
   );
 }

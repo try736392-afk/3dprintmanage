@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Filament } from '../types';
 import { AlertTriangle, Printer, X } from 'lucide-react';
 
@@ -7,11 +7,19 @@ interface DeductModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (amount: number) => void;
+  initialAmount?: string;
 }
 
-const DeductModal: React.FC<DeductModalProps> = ({ filament, isOpen, onClose, onConfirm }) => {
-  const [amount, setAmount] = useState<string>('');
+const DeductModal: React.FC<DeductModalProps> = ({ filament, isOpen, onClose, onConfirm, initialAmount = '' }) => {
+  const [amount, setAmount] = useState<string>(initialAmount);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setAmount(initialAmount);
+      setError(null);
+    }
+  }, [isOpen, initialAmount]);
 
   if (!isOpen) return null;
 
@@ -94,7 +102,7 @@ const DeductModal: React.FC<DeductModalProps> = ({ filament, isOpen, onClose, on
               onClick={handleConfirm}
               className="flex-1 py-3 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 shadow-lg shadow-blue-600/20 transition-all active:scale-95"
             >
-              确认打印
+              确认扣除
             </button>
           </div>
         </div>

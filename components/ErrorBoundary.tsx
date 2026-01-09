@@ -1,4 +1,5 @@
-import React, { ErrorInfo, ReactNode } from 'react';
+
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -11,7 +12,8 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-class ErrorBoundary extends React.Component<Props, State> {
+// Explicitly inherit from Component to ensure properties like setState and props are correctly resolved by TypeScript
+class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
@@ -24,6 +26,7 @@ class ErrorBoundary extends React.Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error:", error, errorInfo);
+    // Fix: setState is inherited from React.Component
     this.setState({ errorInfo });
   }
 
@@ -56,6 +59,7 @@ class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
+    // Fix: props is inherited from React.Component
     return this.props.children;
   }
 }
