@@ -1,5 +1,5 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -12,8 +12,12 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-// Explicitly inherit from Component to ensure properties like setState and props are correctly resolved by TypeScript
-class ErrorBoundary extends Component<Props, State> {
+/**
+ * ErrorBoundary catches JavaScript errors anywhere in their child component tree,
+ * logs those errors, and displays a fallback UI instead of the component tree that crashed.
+ */
+// Explicitly extending React.Component ensures setState and props are inherited correctly in TypeScript
+class ErrorBoundary extends React.Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
@@ -21,17 +25,20 @@ class ErrorBoundary extends Component<Props, State> {
   };
 
   public static getDerivedStateFromError(error: Error): State {
+    // Update state so the next render will show the fallback UI.
     return { hasError: true, error, errorInfo: null };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // Log the error to an error reporting service
     console.error("Uncaught error:", error, errorInfo);
-    // Fix: setState is inherited from React.Component
+    // Use the inherited setState method to update state when an error is caught
     this.setState({ errorInfo });
   }
 
   public render() {
     if (this.state.hasError) {
+      // Fallback UI when an error occurs
       return (
         <div className="min-h-screen bg-red-50 flex items-center justify-center p-4">
           <div className="bg-white p-8 rounded-xl shadow-xl max-w-2xl w-full border border-red-200">
@@ -59,7 +66,7 @@ class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    // Fix: props is inherited from React.Component
+    // Access children through the inherited props property
     return this.props.children;
   }
 }
