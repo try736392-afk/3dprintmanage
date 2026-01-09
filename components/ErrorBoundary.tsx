@@ -1,23 +1,23 @@
 
-import React from 'react';
+import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorInfo: React.ErrorInfo | null;
+  errorInfo: ErrorInfo | null;
 }
 
 /**
  * ErrorBoundary catches JavaScript errors anywhere in their child component tree,
  * logs those errors, and displays a fallback UI instead of the component tree that crashed.
  */
-// Fix: Using React.Component explicitly ensures that inheritance of properties like setState and props is correctly resolved by TypeScript
-class ErrorBoundary extends React.Component<Props, State> {
+// Explicitly extending Component with Props and State ensures that inherited members like setState and props are correctly typed and available
+class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
@@ -29,10 +29,10 @@ class ErrorBoundary extends React.Component<Props, State> {
     return { hasError: true, error, errorInfo: null };
   }
 
-  public componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log the error to an error reporting service
     console.error("Uncaught error:", error, errorInfo);
-    // Fix: Inherited setState method is available on the class instance when extending React.Component
+    // Fix: setState is a method inherited from React.Component
     this.setState({ errorInfo });
   }
 
@@ -66,7 +66,7 @@ class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    // Fix: Inherited props property is accessible from the component instance
+    // Fix: props is a property inherited from React.Component
     return this.props.children;
   }
 }
