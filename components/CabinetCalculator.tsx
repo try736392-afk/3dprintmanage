@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calculator, Weight, Layers, ChevronRight, Box, Percent, Ruler, Disc, ToggleLeft, ToggleRight, Archive } from 'lucide-react';
 
@@ -16,28 +15,28 @@ const MATERIAL_DENSITIES: Record<string, number> = {
 const LINE_WIDTH = 0.42;
 
 const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
-  // helper to parse string to number safely, moved to component scope for JSX access
+  // helper to parse string to number safely
   const parse = (val: string) => parseFloat(val) || 0;
 
-  // 基础参数
+  // 基础参数 - 更新默认值: 层数 5, 壁厚 2.9, 墙层数 2
   const [params, setParams] = useState({
     width: '100',
     depth: '100',
     height: '150',
-    shelves: '2',         
-    wallThickness: '2.4', 
-    wallLoops: '3',       
+    shelves: '5',         
+    wallThickness: '2.9', 
+    wallLoops: '2',       
     infill: '15',         
     material: 'PLA',
     compensation: '1.15'  
   });
 
-  // 抽屉参数
+  // 抽屉参数 - 更新默认值: 数量 5
   const [hasDrawers, setHasDrawers] = useState(false);
   const [drawerParams, setDrawerParams] = useState({
-    quantity: '2',
+    quantity: '5',
     thickness: '2.0',
-    height: '' // 初始为空，由逻辑自动计算默认值
+    height: '' 
   });
 
   const [weightBreakdown, setWeightBreakdown] = useState({
@@ -45,6 +44,22 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     drawers: 0,
     total: 0
   });
+
+  // 1. 自动同步抽屉高度 (Auto-Calculation Fix)
+  // 当柜子高度、层数或柜壁厚度改变时，重新计算推荐抽屉高度
+  useEffect(() => {
+    const H = parse(params.height);
+    const T = parse(params.wallThickness);
+    const L = parse(params.shelves);
+    
+    if (L > 0) {
+      const calculatedH = (H - (L + 1) * T) / L;
+      setDrawerParams(prev => ({ 
+        ...prev, 
+        height: calculatedH > 0 ? calculatedH.toFixed(1) : '0' 
+      }));
+    }
+  }, [params.height, params.shelves, params.wallThickness]);
 
   // 工具函数：计算单块板材的重量
   const calculatePanelWeight = (
@@ -70,7 +85,6 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
   };
 
   useEffect(() => {
-    // 柜体原始参数
     const W = parse(params.width);
     const D = parse(params.depth);
     const H = parse(params.height);
@@ -81,45 +95,34 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     const density = MATERIAL_DENSITIES[params.material] || 1.24;
     const F = parse(params.compensation);
 
-    // 1. 计算柜体重量
+    // 2. 计算柜体重量
     const cabinetPanels = [
       { w: W, d: H, t: T }, // 背板
-      { w: D, d: H, t: T * 2 }, // 双侧板 (简化计算)
-      { w: W, d: D, t: T * L } // 横板 (底板+隔板)
+      { w: D, d: H, t: T * 2 }, // 双侧板
+      { w: W, d: D, t: T * L } // 横板
     ];
 
     const cabinetWeight = cabinetPanels.reduce((acc, p) => 
       acc + calculatePanelWeight(p.w, p.d, p.t, wallLoops, infillRate, density, F), 0
     );
 
-    // 2. 抽屉逻辑处理
+    // 3. 抽屉重量逻辑
     let drawersWeight = 0;
     if (hasDrawers) {
-      // 默认高度估算：(柜子高度 - (层数+1)*柜壁厚) / 层数
-      const defaultDrawerH = L > 0 ? (H - (L + 1) * T) / L : 0;
-      const currentDrawerH = drawerParams.height === '' ? defaultDrawerH : parse(drawerParams.height);
-      
+      const dH = parse(drawerParams.height);
       const drawerQty = parse(drawerParams.quantity);
       const dT = parse(drawerParams.thickness);
 
-      // 抽屉外径尺寸推导 (Clearance 2mm width, 1mm depth)
       const dW = Math.max(0, W - (2 * T) - 2);
       const dD = Math.max(0, D - T - 1);
-      const dH = currentDrawerH;
 
       if (dW > 0 && dD > 0 && dH > 0) {
-        // 单个抽屉体积分解: 1底 + 2前/后 + 2侧
         const singleDrawerWeight = 
           calculatePanelWeight(dW, dD, dT, wallLoops, infillRate, density, F) + // 底
           calculatePanelWeight(dW, dH, dT * 2, wallLoops, infillRate, density, F) + // 前后
           calculatePanelWeight(dD - 2 * dT, dH, dT * 2, wallLoops, infillRate, density, F); // 左右
         
         drawersWeight = singleDrawerWeight * drawerQty;
-      }
-
-      // 如果高度输入为空，回填默认显示
-      if (drawerParams.height === '' && defaultDrawerH > 0) {
-        setDrawerParams(prev => ({ ...prev, height: defaultDrawerH.toFixed(1) }));
       }
     }
 
@@ -278,7 +281,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
         </div>
         
         <p className="text-[9px] text-indigo-400 text-center leading-relaxed">
-          抽屉外宽推导: W-{2*parse(params.wallThickness)}-2mm | 抽屉深度推导: D-{parse(params.wallThickness)}-1mm
+          抽屉外宽推导: W-{2*parse(params.wallThickness)}-2mm | 抽屉深度推导: D-{params.wallThickness}-1mm
         </p>
       </div>
     </div>

@@ -9,7 +9,7 @@ import MaterialAdvisor from './components/MaterialAdvisor';
 import DatabaseConfigModal from './components/DatabaseConfigModal';
 import LowStockModal from './components/LowStockModal';
 import CabinetCalculator from './components/CabinetCalculator';
-import { Plus, Edit2, Trash2, Box, Search, Sparkles, Loader2, CloudOff, LayoutList, LayoutGrid } from 'lucide-react';
+import { Plus, Edit2, Trash2, Box, Search, Sparkles, Loader2, CloudOff, LayoutList, LayoutGrid, Package } from 'lucide-react';
 
 function App() {
   // Config State
@@ -140,8 +140,6 @@ function App() {
     if (listElement) {
       listElement.scrollIntoView({ behavior: 'smooth' });
     }
-    // 我们不需要在这里打开模态框，而是让用户点击列表中的任何一个“扣除”按钮
-    // 此时 prefilledWeight 已经被设置，下次打开 DeductModal 时会自动填充
     alert(`已记录 ${weight}g。请在下方的耗材列表中点击“确认打印”来从指定耗材中扣除。`);
   };
 
@@ -208,30 +206,41 @@ function App() {
         {!loading && !error && (
           <>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-              {/* Left Column: Stats & Calculator */}
-              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column: Stats Cards */}
+              <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Total Weight Card */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
-                  <span className="text-gray-500 text-sm font-medium mb-1">可用重量 (总计)</span>
-                  <span className="text-4xl font-black text-gray-900">{(totalStock / 1000).toFixed(1)} <span className="text-xl text-gray-400 font-normal">kg</span></span>
+                  <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">可用总重量</span>
+                  <span className="text-3xl font-black text-gray-900">{(totalStock / 1000).toFixed(1)} <span className="text-lg text-gray-400 font-normal">kg</span></span>
+                </div>
+
+                {/* Total Count Card - RESTORED */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-center">
+                  <span className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-1">耗材总数</span>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-black text-gray-900">{filaments.length}</span>
+                    <span className="text-lg text-gray-400 font-normal mb-1">卷</span>
+                  </div>
                 </div>
                 
+                {/* Low Stock Card */}
                 <div 
                   onClick={() => setLowStockModalOpen(true)}
                   className={`p-6 rounded-2xl shadow-sm border flex flex-col cursor-pointer transition-all active:scale-95 hover:shadow-md select-none ${lowStockCount > 0 ? 'bg-red-50 border-red-100' : 'bg-white border-gray-100'}`}
                 >
                   <div className="flex justify-between items-start">
-                    <span className={`${lowStockCount > 0 ? 'text-red-600' : 'text-gray-500'} text-sm font-medium mb-1`}>低库存预警</span>
+                    <span className={`${lowStockCount > 0 ? 'text-red-600' : 'text-gray-500'} text-xs font-bold uppercase tracking-wider mb-1`}>低库存预警</span>
                     {lowStockCount > 0 && <span className="flex h-3 w-3 relative">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
                     </span>}
                   </div>
-                  <span className={`text-4xl font-black ${lowStockCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{lowStockCount}</span>
-                  <span className="text-xs text-gray-400 mt-1">点击查看预警名单</span>
+                  <span className={`text-3xl font-black ${lowStockCount > 0 ? 'text-red-600' : 'text-gray-900'}`}>{lowStockCount}</span>
+                  <span className="text-[10px] text-gray-400 mt-1 uppercase font-medium">点击查看详情</span>
                 </div>
               </div>
 
-              {/* Right Column: New Calculator Card */}
+              {/* Right Column: Calculator Card */}
               <div className="lg:col-span-1">
                 <CabinetCalculator onDeduct={handleCalculatorDeduct} />
               </div>
