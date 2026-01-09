@@ -1,5 +1,5 @@
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 interface Props {
@@ -16,8 +16,8 @@ interface State {
  * ErrorBoundary catches JavaScript errors anywhere in their child component tree,
  * logs those errors, and displays a fallback UI instead of the component tree that crashed.
  */
-// Use the named Component import to ensure reliable inheritance typing in various environments
-class ErrorBoundary extends Component<Props, State> {
+// Use React.Component explicitly to ensure reliable inheritance and access to standard React methods and properties
+class ErrorBoundary extends React.Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
@@ -33,7 +33,7 @@ class ErrorBoundary extends Component<Props, State> {
     // Log the error to an error reporting service
     console.error("Uncaught error:", error, errorInfo);
     
-    // Explicitly call the inherited setState method
+    // Update state with error information using the inherited setState method
     this.setState({ errorInfo });
   }
 
@@ -67,7 +67,7 @@ class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    // Correctly access children through the inherited props property
+    // Access children through the inherited props property
     return this.props.children;
   }
 }
