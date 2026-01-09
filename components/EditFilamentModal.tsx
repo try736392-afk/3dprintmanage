@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Filament, MaterialType } from '../types';
-import { Save, X } from 'lucide-react';
+import { Save, X, Coins } from 'lucide-react';
 
 interface EditFilamentModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ const DEFAULT_FILAMENT: Filament = {
   colorHex: '#3b82f6',
   totalWeight: 1000,
   currentWeight: 1000,
+  pricePerKg: 50,
   createdAt: 0
 };
 
@@ -90,6 +92,22 @@ const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ isOpen, onClose, 
               </select>
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1">
+                <Coins className="w-3 h-3 text-amber-500" /> 单价 (元/kg)
+              </label>
+              <input 
+                type="number" 
+                step="0.1"
+                value={formData.pricePerKg}
+                onChange={e => setFormData({...formData, pricePerKg: Number(e.target.value)})}
+                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="通常 1kg 卷价格即为单价"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">颜色代码 (Hex)</label>
               <div className="flex gap-2 items-center">
                 <input 
@@ -106,27 +124,12 @@ const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ isOpen, onClose, 
                 />
               </div>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">总容量 (g)</label>
-              <input 
-                required
-                type="number" 
-                min="0"
-                value={formData.totalWeight}
-                onChange={e => setFormData({...formData, totalWeight: Number(e.target.value)})}
-                className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">当前重量 (g)</label>
               <input 
                 required
                 type="number"
                 min="0"
-                max={formData.totalWeight}
                 value={formData.currentWeight}
                 onChange={e => setFormData({...formData, currentWeight: Number(e.target.value)})}
                 className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500"

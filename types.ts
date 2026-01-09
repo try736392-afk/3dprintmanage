@@ -1,3 +1,4 @@
+
 export enum MaterialType {
   PLA = 'PLA',
   PETG = 'PETG',
@@ -16,6 +17,7 @@ export interface Filament {
   colorHex: string;
   totalWeight: number; // in grams, usually 1000g
   currentWeight: number; // in grams
+  pricePerKg: number; // in CNY per 1000g
   lastUsed?: string;
   createdAt: number;
 }
