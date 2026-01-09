@@ -18,7 +18,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
   // helper to parse string to number safely
   const parse = (val: string) => parseFloat(val) || 0;
 
-  // 基础参数 - 补偿系数拆分为柜体和抽屉独立参数
+  // 基础参数 - 升级默认补偿值和材质状态
   const [params, setParams] = useState({
     width: '100',
     depth: '100',
@@ -27,12 +27,13 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     wallThickness: '2.9', 
     wallLoops: '2',       
     infill: '15',         
-    material: 'PLA',
-    cabinetCompensation: '1.15', // 针对大件柜体
-    drawerCompensation: '1.05'   // 针对精准抽屉
+    cabinetMaterial: 'PLA',    // 柜体默认 PLA
+    drawerMaterial: 'PETG',     // 抽屉默认 PETG
+    cabinetCompensation: '1.67', // 更新默认值
+    drawerCompensation: '1.34'   // 更新默认值
   });
 
-  // 抽屉参数
+  // 抽屉几何参数
   const [hasDrawers, setHasDrawers] = useState(false);
   const [drawerParams, setDrawerParams] = useState({
     quantity: '5',
@@ -46,7 +47,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     total: 0
   });
 
-  // 1. 自动同步抽屉高度 (Auto-Calculation Fix)
+  // 1. 自动同步抽屉高度
   useEffect(() => {
     const H = parse(params.height);
     const T = parse(params.wallThickness);
@@ -61,7 +62,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     }
   }, [params.height, params.shelves, params.wallThickness]);
 
-  // 核心工具函数：计算单块板材的重量 (基础物理重量，不含补偿)
+  // 核心工具函数：计算单块板材的物理重量 (不含补偿)
   const calculatePanelRawWeight = (
     w: number, d: number, t: number, 
     wallLoops: number, infillRate: number, 
@@ -92,13 +93,16 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     const L = parse(params.shelves);
     const wallLoops = parse(params.wallLoops);
     const infillRate = parse(params.infill) / 100;
-    const density = MATERIAL_DENSITIES[params.material] || 1.24;
     
-    // 获取两个独立的补偿系数
+    // 密度解耦
+    const cabDensity = MATERIAL_DENSITIES[params.cabinetMaterial] || 1.24;
+    const draDensity = MATERIAL_DENSITIES[params.drawerMaterial] || 1.27;
+    
+    // 补偿解耦
     const FCab = parse(params.cabinetCompensation);
     const FDra = parse(params.drawerCompensation);
 
-    // 2. 计算柜体总重 (应用 FCab)
+    // 2. 计算柜体总重 (Shell Material + FCab)
     const cabinetPanels = [
       { w: W, d: H, t: T }, // 背板
       { w: D, d: H, t: T * 2 }, // 双侧板
@@ -106,11 +110,11 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     ];
 
     const rawCabinetWeight = cabinetPanels.reduce((acc, p) => 
-      acc + calculatePanelRawWeight(p.w, p.d, p.t, wallLoops, infillRate, density), 0
+      acc + calculatePanelRawWeight(p.w, p.d, p.t, wallLoops, infillRate, cabDensity), 0
     );
     const finalCabinetWeight = rawCabinetWeight * FCab;
 
-    // 3. 抽屉重量逻辑 (应用 FDra)
+    // 3. 抽屉重量逻辑 (Drawer Material + FDra)
     let finalDrawersWeight = 0;
     if (hasDrawers) {
       const dH = parse(drawerParams.height);
@@ -122,9 +126,9 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
 
       if (dW > 0 && dD > 0 && dH > 0) {
         const rawSingleDrawerWeight = 
-          calculatePanelRawWeight(dW, dD, dT, wallLoops, infillRate, density) + // 底
-          calculatePanelRawWeight(dW, dH, dT * 2, wallLoops, infillRate, density) + // 前后
-          calculatePanelRawWeight(dD - 2 * dT, dH, dT * 2, wallLoops, infillRate, density); // 左右
+          calculatePanelRawWeight(dW, dD, dT, wallLoops, infillRate, draDensity) + // 底
+          calculatePanelRawWeight(dW, dH, dT * 2, wallLoops, infillRate, draDensity) + // 前后
+          calculatePanelRawWeight(dD - 2 * dT, dH, dT * 2, wallLoops, infillRate, draDensity); // 左右
         
         finalDrawersWeight = rawSingleDrawerWeight * drawerQty * FDra;
       }
@@ -158,13 +162,13 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
           <div className="p-1.5 bg-indigo-600 rounded-lg">
             <Calculator className="w-4 h-4 text-white" />
           </div>
-          <h3 className="font-bold text-indigo-900">组合柜耗材智能估算</h3>
+          <h3 className="font-bold text-indigo-900">组合柜混合材质估算</h3>
         </div>
         <div className="flex items-center gap-1.5 bg-white/80 px-2 py-1 rounded-lg border border-indigo-100 shadow-sm">
-           <Box className="w-3.5 h-3.5 text-indigo-400" />
+           <span className="text-[9px] font-bold text-indigo-400 uppercase">柜体材质</span>
            <select 
-             value={params.material}
-             onChange={(e) => setParams(prev => ({ ...prev, material: e.target.value }))}
+             value={params.cabinetMaterial}
+             onChange={(e) => setParams(prev => ({ ...prev, cabinetMaterial: e.target.value }))}
              className="bg-transparent text-xs font-bold text-indigo-600 outline-none cursor-pointer"
            >
              {Object.keys(MATERIAL_DENSITIES).map(m => (
@@ -178,7 +182,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
         {/* 1. Cabinet Geometry */}
         <div className="space-y-2">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-            <Ruler className="w-3 h-3" /> 柜体几何 (Cabinet)
+            <Ruler className="w-3 h-3" /> 柜体几何 (Shell)
           </p>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -203,9 +207,25 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
         {/* 2. Drawer Configuration */}
         <div className="pt-2 border-t border-gray-50 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-              <Archive className="w-3 h-3" /> 抽屉配置 (Drawers)
-            </p>
+            <div className="flex items-center gap-2">
+               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
+                <Archive className="w-3 h-3" /> 抽屉配置 (Drawers)
+              </p>
+              {hasDrawers && (
+                <div className="flex items-center gap-1.5 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                  <span className="text-[9px] font-bold text-indigo-400">材质</span>
+                  <select 
+                    value={params.drawerMaterial}
+                    onChange={(e) => setParams(prev => ({ ...prev, drawerMaterial: e.target.value }))}
+                    className="bg-transparent text-[10px] font-bold text-indigo-600 outline-none cursor-pointer"
+                  >
+                    {Object.keys(MATERIAL_DENSITIES).map(m => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
             <button 
               onClick={() => setHasDrawers(!hasDrawers)}
               className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold transition-all ${hasDrawers ? 'bg-indigo-600 text-white shadow-sm' : 'bg-gray-100 text-gray-400'}`}
@@ -233,7 +253,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
           )}
         </div>
 
-        {/* 3. Slicer Settings (Refined with Dual Compensation) */}
+        {/* 3. Slicer Settings */}
         <div className="space-y-2 pt-2 border-t border-gray-50">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
             <Disc className="w-3 h-3" /> 切片设置 (Slicer)
@@ -245,7 +265,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
                 <input type="text" inputMode="decimal" value={params.wallThickness} onChange={e => handleChange('wallThickness', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none" />
               </div>
               <div className="space-y-1">
-                <label className="text-[8px] text-gray-500 font-medium ml-1">墙层数 (Wall)</label>
+                <label className="text-[8px] text-gray-500 font-medium ml-1">墙层数</label>
                 <input type="text" inputMode="numeric" value={params.wallLoops} onChange={e => handleChange('wallLoops', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none" />
               </div>
               <div className="space-y-1">
@@ -256,57 +276,63 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
             
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-[8px] text-indigo-500 font-bold ml-1">柜体补偿因子 (FCab)</label>
+                <label className="text-[8px] text-indigo-500 font-bold ml-1">柜体补偿 (FCab)</label>
                 <input 
                   type="text" inputMode="decimal" 
                   value={params.cabinetCompensation} 
                   onChange={e => handleChange('cabinetCompensation', e.target.value)} 
-                  className="w-full bg-indigo-50/30 border border-indigo-100 rounded-lg px-3 py-1.5 text-xs font-bold text-indigo-600 outline-none focus:ring-1 focus:ring-indigo-400" 
-                  placeholder="1.15"
+                  className="w-full bg-indigo-50/30 border border-indigo-100 rounded-lg px-3 py-1.5 text-xs font-bold text-indigo-600 outline-none" 
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-[8px] text-emerald-500 font-bold ml-1">抽屉补偿因子 (FDra)</label>
+                <label className="text-[8px] text-emerald-500 font-bold ml-1">抽屉补偿 (FDra)</label>
                 <input 
                   type="text" inputMode="decimal" 
                   value={params.drawerCompensation} 
                   onChange={e => handleChange('drawerCompensation', e.target.value)} 
-                  className="w-full bg-emerald-50/30 border border-emerald-100 rounded-lg px-3 py-1.5 text-xs font-bold text-emerald-600 outline-none focus:ring-1 focus:ring-emerald-400" 
-                  placeholder="1.05"
+                  className="w-full bg-emerald-50/30 border border-emerald-100 rounded-lg px-3 py-1.5 text-xs font-bold text-emerald-600 outline-none" 
                 />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Result Breakdown */}
-        <div className="space-y-2">
+        {/* Result & Actions */}
+        <div className="space-y-3">
            <div className="flex justify-between text-[10px] font-bold text-gray-400 px-1 uppercase tracking-tighter">
-              <span className="flex items-center gap-1">柜体 (含FCab): <b className="text-gray-600">{weightBreakdown.cabinet}g</b></span>
-              {hasDrawers && <span className="flex items-center gap-1">抽屉 (含FDra): <b className="text-gray-600">{weightBreakdown.drawers}g</b></span>}
+              <span>总估算: <b className="text-gray-900">{weightBreakdown.total}g</b></span>
+              <span>材质: {params.cabinetMaterial}{hasDrawers ? ` + ${params.drawerMaterial}` : ''}</span>
            </div>
            
-           <div className="p-4 bg-indigo-600 rounded-xl text-white shadow-lg shadow-indigo-100 flex items-center justify-between group">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-lg group-hover:bg-white/30 transition-colors">
-                <Weight className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-[10px] text-indigo-100 uppercase font-bold tracking-widest">最终总估算量</p>
-                <p className="text-2xl font-black leading-none mt-1">{weightBreakdown.total} <span className="text-sm font-normal">g</span></p>
-              </div>
-            </div>
-            <button 
-              onClick={() => onDeduct(weightBreakdown.total)}
-              className="bg-white text-indigo-600 px-4 py-2 rounded-lg font-bold text-sm hover:bg-indigo-50 transition-all active:scale-95 flex items-center gap-1 shadow-sm"
-            >
-              一键扣除 <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+           <div className={`grid gap-2 ${hasDrawers ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <button 
+                onClick={() => onDeduct(weightBreakdown.cabinet)}
+                className="bg-indigo-600 text-white p-3 rounded-xl shadow-lg shadow-indigo-100 transition-all active:scale-95 group flex flex-col items-center justify-center relative overflow-hidden"
+              >
+                <span className="text-[9px] text-indigo-200 uppercase font-bold mb-1 group-hover:translate-y-[-2px] transition-transform">扣除柜体重量</span>
+                <div className="flex items-center gap-1 font-black text-lg">
+                  {weightBreakdown.cabinet}<span className="text-[10px] font-normal">g</span>
+                </div>
+                <div className="absolute right-1 bottom-1 opacity-20"><Box className="w-8 h-8" /></div>
+              </button>
+
+              {hasDrawers && (
+                <button 
+                  onClick={() => onDeduct(weightBreakdown.drawers)}
+                  className="bg-emerald-600 text-white p-3 rounded-xl shadow-lg shadow-emerald-100 transition-all active:scale-95 group flex flex-col items-center justify-center relative overflow-hidden"
+                >
+                  <span className="text-[9px] text-emerald-200 uppercase font-bold mb-1 group-hover:translate-y-[-2px] transition-transform">扣除抽屉重量</span>
+                  <div className="flex items-center gap-1 font-black text-lg">
+                    {weightBreakdown.drawers}<span className="text-[10px] font-normal">g</span>
+                  </div>
+                  <div className="absolute right-1 bottom-1 opacity-20"><Archive className="w-8 h-8" /></div>
+                </button>
+              )}
+           </div>
         </div>
         
         <p className="text-[9px] text-indigo-400 text-center leading-relaxed italic">
-          差异化算法已启用：针对结构复杂性应用了独立补偿系数，以匹配切片软件真实耗材路径消耗。
+          混合材质模式：柜体({params.cabinetMaterial})与抽屉({params.drawerMaterial})密度已自动分离。
         </p>
       </div>
     </div>

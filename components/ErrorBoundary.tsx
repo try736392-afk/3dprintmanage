@@ -16,8 +16,8 @@ interface State {
  * ErrorBoundary catches JavaScript errors anywhere in their child component tree,
  * logs those errors, and displays a fallback UI instead of the component tree that crashed.
  */
-// Fix: Use explicit React.Component to ensure inherited members like setState and props are correctly recognized by TypeScript
-class ErrorBoundary extends React.Component<Props, State> {
+// Use the named Component import to ensure reliable inheritance typing in various environments
+class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
     error: null,
@@ -33,7 +33,7 @@ class ErrorBoundary extends React.Component<Props, State> {
     // Log the error to an error reporting service
     console.error("Uncaught error:", error, errorInfo);
     
-    // Fix: Call the inherited setState method to store error info
+    // Explicitly call the inherited setState method
     this.setState({ errorInfo });
   }
 
@@ -67,7 +67,7 @@ class ErrorBoundary extends React.Component<Props, State> {
       );
     }
 
-    // Fix: Correctly access children through the inherited props property
+    // Correctly access children through the inherited props property
     return this.props.children;
   }
 }
