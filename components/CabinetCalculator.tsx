@@ -5,7 +5,7 @@ interface CabinetCalculatorProps {
   onDeduct: (weight: number) => void;
 }
 
-// 扩展后的材质预设数据库
+// 材质预设数据库 (密度)
 const MATERIAL_PRESETS: Record<string, number> = {
   'PLA Basic/Matte': 1.24,
   'PLA Silk/Metal': 1.31,
@@ -14,6 +14,15 @@ const MATERIAL_PRESETS: Record<string, number> = {
   'PETG-CF': 1.29,
   'ABS': 1.05,
   'TPU': 1.21
+};
+
+// 获取材质推荐功率 (基于打印温度与热床负荷)
+const getPowerForMaterial = (material: string): number => {
+  if (material.includes('PLA')) return 150;
+  if (material.includes('PETG')) return 170;
+  if (material.includes('ABS') || material.includes('ASA')) return 280;
+  if (material.includes('TPU')) return 150;
+  return 150; // 默认值
 };
 
 const LINE_WIDTH = 0.42;
@@ -33,13 +42,13 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     infill: '15',         
     cabinetMaterial: 'PLA Basic/Matte',
     cabinetDensity: '1.24',  
+    cabinetPower: '150',     // 柜体打印功率
     drawerMaterial: 'PETG Basic',
     drawerDensity: '1.27',   
+    drawerPower: '170',      // 抽屉打印功率
     cabinetCompensation: '1.67',
     drawerCompensation: '1.34',
-    // 新增：时间和电费估算参数
-    printEfficiency: '40',   // 克/小时 (Bambu 级别 40-50, 普通 20-30)
-    avgPower: '150',         // 瓦特
+    printEfficiency: '44',   // 克/小时 (默认值已更新为 44)
     elecRate: '0.6'          // 元/度
   });
 
@@ -63,7 +72,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     cost: 0
   });
 
-  // 1. 修复：抽屉数量与柜子层数自动同步
+  // 1. 抽屉数量与柜子层数自动同步
   useEffect(() => {
     setDrawerParams(prev => ({ 
       ...prev, 
@@ -124,7 +133,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     const FCab = parse(params.cabinetCompensation);
     const FDra = parse(params.drawerCompensation);
 
-    // 计算柜体
+    // 计算柜体重量
     const cabinetPanels = [
       { w: W, d: H, t: T }, 
       { w: D, d: H, t: T * 2 }, 
@@ -136,7 +145,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     );
     const finalCabinetWeight = rawCabinetWeight * FCab;
 
-    // 计算抽屉
+    // 计算抽屉重量
     let finalDrawersWeight = 0;
     if (hasDrawers) {
       const dH = parse(drawerParams.height);
@@ -163,16 +172,31 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
       total: Math.round(totalWeight)
     });
 
-    // 计算时间和成本
+    // 智能分材质耗能估算
     const efficiency = parse(params.printEfficiency);
-    const power = parse(params.avgPower);
     const rate = parse(params.elecRate);
+    const cabPower = parse(params.cabinetPower);
+    const draPower = parse(params.drawerPower);
 
     if (efficiency > 0 && totalWeight > 0) {
-      const hours = totalWeight / efficiency;
-      const kwh = (power / 1000) * hours;
-      const cost = kwh * rate;
-      setEstimates({ hours, kwh, cost });
+      // 分别计算柜体和抽屉的耗时
+      const cabHours = finalCabinetWeight / efficiency;
+      const draHours = hasDrawers ? (finalDrawersWeight / efficiency) : 0;
+      
+      const totalHours = cabHours + draHours;
+      
+      // 分别计算能耗并求和
+      const cabKwh = (cabHours * cabPower) / 1000;
+      const draKwh = (draHours * draPower) / 1000;
+      
+      const totalKwh = cabKwh + draKwh;
+      const totalCost = totalKwh * rate;
+      
+      setEstimates({ 
+        hours: totalHours, 
+        kwh: totalKwh, 
+        cost: totalCost 
+      });
     } else {
       setEstimates({ hours: 0, kwh: 0, cost: 0 });
     }
@@ -187,10 +211,13 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
 
   const handleMaterialChange = (type: 'cabinet' | 'drawer', material: string) => {
     const density = MATERIAL_PRESETS[material] || 1.24;
+    const power = getPowerForMaterial(material);
+    
     setParams(prev => ({
       ...prev,
       [`${type}Material`]: material,
-      [`${type}Density`]: density.toString()
+      [`${type}Density`]: density.toString(),
+      [`${type}Power`]: power.toString()
     }));
   };
 
@@ -200,7 +227,6 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
     }
   };
 
-  // 格式化时间显示
   const formatTime = (hours: number) => {
     const h = Math.floor(hours);
     const m = Math.round((hours - h) * 60);
@@ -215,7 +241,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
           <div className="p-1.5 bg-indigo-600 rounded-lg">
             <Calculator className="w-4 h-4 text-white" />
           </div>
-          <h3 className="font-bold text-indigo-900">组合柜全维度生产估算</h3>
+          <h3 className="font-bold text-indigo-900">组合柜高精度材质估算</h3>
         </div>
       </div>
       
@@ -223,12 +249,12 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
         {/* 1. Cabinet Geometry & Material */}
         <div className="space-y-3">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-            <Ruler className="w-3 h-3" /> 柜体配置 (Shell)
+            <Ruler className="w-3 h-3" /> 柜体材质与功率 (Cabinet)
           </p>
           
-          <div className="grid grid-cols-2 gap-3 p-3 bg-gray-50/50 rounded-xl border border-gray-100">
+          <div className="grid grid-cols-1 gap-2 p-3 bg-gray-50/50 rounded-xl border border-gray-100">
              <div className="space-y-1">
-                <label className="text-[9px] text-gray-500 font-bold ml-1">柜体材质</label>
+                <label className="text-[9px] text-gray-500 font-bold ml-1">柜体材质预设</label>
                 <select 
                   value={params.cabinetMaterial}
                   onChange={(e) => handleMaterialChange('cabinet', e.target.value)}
@@ -239,18 +265,29 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
                   ))}
                 </select>
              </div>
-             <div className="space-y-1">
-                <label className="text-[9px] text-gray-500 font-bold ml-1">密度 (g/cm³)</label>
-                <input 
-                  type="text" inputMode="decimal"
-                  value={params.cabinetDensity}
-                  onChange={e => handleChange('cabinetDensity', e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-mono font-bold text-gray-700 outline-none"
-                />
+             <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                    <label className="text-[9px] text-gray-500 font-bold ml-1">密度 (g/cm³)</label>
+                    <input 
+                      type="text" inputMode="decimal"
+                      value={params.cabinetDensity}
+                      onChange={e => handleChange('cabinetDensity', e.target.value)}
+                      className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-[11px] font-mono font-bold text-gray-700 outline-none"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="text-[9px] text-gray-500 font-bold ml-1">打印功率 (W)</label>
+                    <input 
+                      type="text" inputMode="numeric"
+                      value={params.cabinetPower}
+                      onChange={e => handleChange('cabinetPower', e.target.value)}
+                      className="w-full bg-white border border-indigo-200 rounded-lg px-2 py-1.5 text-[11px] font-mono font-bold text-indigo-700 outline-none"
+                    />
+                </div>
              </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 px-1">
             <div className="space-y-1">
               <label className="text-[9px] text-gray-400 font-medium ml-1">宽度 (W)</label>
               <input type="text" inputMode="decimal" value={params.width} onChange={e => handleChange('width', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-medium outline-none" />
@@ -274,7 +311,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
         <div className="pt-2 border-t border-gray-50 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-              <Archive className="w-3 h-3" /> 抽屉配置 (Drawers)
+              <Archive className="w-3 h-3" /> 抽屉配置与功率 (Drawers)
             </p>
             <button 
               onClick={() => setHasDrawers(!hasDrawers)}
@@ -287,9 +324,9 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
 
           {hasDrawers && (
             <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
-              <div className="grid grid-cols-2 gap-3 p-3 bg-emerald-50/30 rounded-xl border border-emerald-100/50">
+              <div className="grid grid-cols-1 gap-2 p-3 bg-emerald-50/30 rounded-xl border border-emerald-100/50">
                 <div className="space-y-1">
-                    <label className="text-[9px] text-emerald-600 font-bold ml-1">抽屉材质</label>
+                    <label className="text-[9px] text-emerald-600 font-bold ml-1">抽屉材质预设</label>
                     <select 
                       value={params.drawerMaterial}
                       onChange={(e) => handleMaterialChange('drawer', e.target.value)}
@@ -300,28 +337,39 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
                       ))}
                     </select>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-[9px] text-emerald-600 font-bold ml-1">密度</label>
-                    <input 
-                      type="text" inputMode="decimal"
-                      value={params.drawerDensity}
-                      onChange={e => handleChange('drawerDensity', e.target.value)}
-                      className="w-full bg-white border border-emerald-100 rounded-lg px-2 py-1.5 text-[11px] font-mono font-bold text-gray-700 outline-none"
-                    />
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                        <label className="text-[9px] text-emerald-600 font-bold ml-1">密度</label>
+                        <input 
+                          type="text" inputMode="decimal"
+                          value={params.drawerDensity}
+                          onChange={e => handleChange('drawerDensity', e.target.value)}
+                          className="w-full bg-white border border-emerald-100 rounded-lg px-2 py-1.5 text-[11px] font-mono font-bold text-gray-700 outline-none"
+                        />
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-[9px] text-emerald-600 font-bold ml-1">打印功率 (W)</label>
+                        <input 
+                          type="text" inputMode="numeric"
+                          value={params.drawerPower}
+                          onChange={e => handleChange('drawerPower', e.target.value)}
+                          className="w-full bg-white border border-emerald-100 rounded-lg px-2 py-1.5 text-[11px] font-mono font-bold text-emerald-700 outline-none"
+                        />
+                    </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="text-[9px] text-gray-400 font-medium ml-1">抽屉数</label>
-                  <input type="text" inputMode="numeric" value={drawerParams.quantity} onChange={e => handleDrawerChange('quantity', e.target.value)} className="w-full bg-emerald-50/50 border border-emerald-200 rounded-lg px-2 py-1.5 text-sm font-bold text-emerald-700 outline-none" />
+                  <input type="text" inputMode="numeric" value={drawerParams.quantity} onChange={e => handleDrawerChange('quantity', e.target.value)} className="w-full bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1.5 text-sm font-bold text-emerald-700 outline-none" />
                 </div>
                 <div className="space-y-1">
                   <label className="text-[9px] text-gray-400 font-medium ml-1">板材厚度</label>
                   <input type="text" inputMode="decimal" value={drawerParams.thickness} onChange={e => handleDrawerChange('thickness', e.target.value)} className="w-full bg-white border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-medium outline-none" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[9px] text-gray-400 font-medium ml-1">自动高度</label>
+                  <label className="text-[9px] text-gray-400 font-medium ml-1">计算高度</label>
                   <input type="text" disabled value={drawerParams.height} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-sm font-bold text-gray-400 outline-none" />
                 </div>
               </div>
@@ -329,41 +377,20 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
           )}
         </div>
 
-        {/* 3. Estimator Settings */}
+        {/* 3. Estimator Global Settings */}
         <div className="space-y-2 pt-2 border-t border-gray-50">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-            <Zap className="w-3 h-3" /> 生产与电费设置 (Estimator)
+            <Zap className="w-3 h-3" /> 生产效率与电价
           </p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-[8px] text-gray-500 font-medium ml-1">打印效率 (g/h)</label>
-              <input type="text" inputMode="numeric" value={params.printEfficiency} onChange={e => handleChange('printEfficiency', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-amber-400" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[8px] text-gray-500 font-medium ml-1">平均功率 (W)</label>
-              <input type="text" inputMode="numeric" value={params.avgPower} onChange={e => handleChange('avgPower', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-amber-400" />
+              <input type="text" inputMode="numeric" value={params.printEfficiency} onChange={e => handleChange('printEfficiency', e.target.value)} className="w-full bg-amber-50/30 border border-amber-100 rounded-lg px-3 py-1.5 text-xs font-bold text-amber-600 outline-none" />
             </div>
             <div className="space-y-1">
               <label className="text-[8px] text-gray-500 font-medium ml-1">电费 (元/度)</label>
-              <input type="text" inputMode="decimal" value={params.elecRate} onChange={e => handleChange('elecRate', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-amber-400" />
+              <input type="text" inputMode="decimal" value={params.elecRate} onChange={e => handleChange('elecRate', e.target.value)} className="w-full bg-blue-50/30 border border-blue-100 rounded-lg px-3 py-1.5 text-xs font-bold text-blue-600 outline-none" />
             </div>
-          </div>
-        </div>
-
-        {/* 4. Slicer Paths */}
-        <div className="space-y-2 pt-2 border-t border-gray-50">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-1">
-            <Disc className="w-3 h-3" /> 路径补偿参数
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <label className="text-[8px] text-indigo-500 font-bold ml-1">柜体补偿 (FCab)</label>
-                <input type="text" inputMode="decimal" value={params.cabinetCompensation} onChange={e => handleChange('cabinetCompensation', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-medium outline-none" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[8px] text-emerald-500 font-bold ml-1">抽屉补偿 (FDra)</label>
-                <input type="text" inputMode="decimal" value={params.drawerCompensation} onChange={e => handleChange('drawerCompensation', e.target.value)} className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-medium outline-none" />
-              </div>
           </div>
         </div>
 
@@ -385,7 +412,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
                   <Zap className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-[8px] text-blue-600 font-bold uppercase tracking-tighter">预计能耗</p>
+                  <p className="text-[8px] text-blue-600 font-bold uppercase tracking-tighter">分材质能耗</p>
                   <p className="text-[11px] font-bold text-blue-900">¥{estimates.cost.toFixed(2)} <span className="text-[9px] font-normal opacity-60">({estimates.kwh.toFixed(2)} 度)</span></p>
                 </div>
               </div>
@@ -393,7 +420,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
 
            <div className="flex justify-between text-[10px] font-bold text-gray-400 px-1 uppercase tracking-tighter">
               <span>预估总重: <b className="text-gray-900">{weightBreakdown.total}g</b></span>
-              <span className="flex items-center gap-1"><Coins className="w-2 h-2" /> 生产级精算模式</span>
+              <span className="flex items-center gap-1"><Coins className="w-2 h-2" /> 生产级精算模型 v2.0</span>
            </div>
            
            <div className={`grid gap-2 ${hasDrawers ? 'grid-cols-2' : 'grid-cols-1'}`}>
@@ -424,7 +451,7 @@ const CabinetCalculator: React.FC<CabinetCalculatorProps> = ({ onDeduct }) => {
         </div>
         
         <p className="text-[9px] text-indigo-400 text-center leading-relaxed italic px-2">
-          智能估算引擎：时间与电费基于打印效率与机器平均功率计算，实际结果可能受热床预热与流量限制影响。
+          能耗引擎 2.0：已根据柜体与抽屉材质分别核算功率。ABS 等高温材质的电费占比已自动加权。
         </p>
       </div>
     </div>
